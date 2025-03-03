@@ -24,11 +24,7 @@ export const login = async (req, res) => {
     const token = encodeToken(payload)
     res.status(200).json({
         data: {
-            token,
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            createdAt: user.createdAt,
+            token
         }
     })
 };
@@ -36,30 +32,36 @@ export const login = async (req, res) => {
 /** @type {express.RequestHandler} */
 export const register = async (req, res) => {
   /** @type {{name: string, email: string, password: string}} */
-  const { name, email, password } = req.body;
-  //validation
-  if(!name && !email && !password){
-    throw new Error('Invalid Params')
-  }
+	const { name, email, password } = req.body;
+	//validation
+	if(!name && !email && !password){
+		throw new Error('Invalid Params')
+	}
 
-  const existUser = await User.findOne({where: {email}}).then(r => r?.toJSON())
-  
-  if(existUser){
-    throw new Error('User already exist')
-  }
-  const hashedPassword = hashPassword(password);
-  const {password: hp, ...user} = await User.create({
-    name,
-    email,
-    password: hashedPassword
-  }).then(r => r.toJSON())
+	const existUser = await User.findOne({where: {email}}).then(r => r?.toJSON())
 
-  res.status(200).json({
-    success: true,
-    data: {
-        user
-    }
-  })
+	if(existUser){
+		throw new Error('User already exist')
+	}
+	const hashedPassword = hashPassword(password);
+	const {password: hp, ...user} = await User.create({
+		name,
+		email,
+		password: hashedPassword
+	}).then(r => r.toJSON())
+
+	const payload = {
+		id: user.id,
+		email: user.email
+	}
+	const token = encodeToken(payload)
+
+	res.status(200).json({
+	success: true,
+	data: {
+		token
+	}
+	})
 };
 
 /** @type {express.RequestHandler} */

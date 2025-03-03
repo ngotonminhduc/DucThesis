@@ -7,11 +7,7 @@ import { ulid } from "ulidx";
 export const BaseModle = {
   id: {
     type: DataTypes.STRING,
-    defaultValue: ulid(), // Tự động tạo UUID v4
+    defaultValue: () => ulid(), 
     primaryKey: true,
   },
-  createdAt: {
-    defaultValue: new Date(),
-    type: DataTypes.DATE
-  }
 };

@@ -1,10 +1,12 @@
 import { User } from "../models/User.js";
+import { Exam } from "../models/Exam.js";
 import { configdb } from "./config.js";
 import { s2g } from "./database.js";
 
 // Đăng ký model vào Sequelize
 const initModels = async () => {
-  await User.sync(); // Đăng ký model này
+  await User.sync();
+  await Exam.sync();
 };
 
 export const connectDatabase = async () => {

@@ -8,11 +8,12 @@ class ApiService {
   public static getInstance(): AxiosInstance {
     if (!ApiService.instance) {
       ApiService.instance = axios.create({
-        baseURL: `${process.env.NEXT_PUBLIC_HOST_API}`,
+        baseURL: process.env.NEXT_PUBLIC_HOST_API,
         timeout: 10000,
         headers: {
           "Content-Type": "application/json",
         },
+        withCredentials: true, // Ensure credentials are included
       });
 
       // Request interceptor
@@ -48,6 +49,7 @@ class ApiService {
     const response: AxiosResponse<T> = await this.getInstance().get(url, {
       ...config,
       params,
+      withCredentials: true, // Ensure credentials are sent
     });
     return response.data;
   }
@@ -58,7 +60,10 @@ class ApiService {
     data?: Record<string, any>,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    const response: AxiosResponse<T> = await this.getInstance().post(url, data, config);
+    const response: AxiosResponse<T> = await this.getInstance().post(url, data, {
+      ...config,
+      withCredentials: true, // Ensure credentials are sent
+    });
     return response.data;
   }
 
@@ -68,7 +73,10 @@ class ApiService {
     data?: Record<string, any>,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    const response: AxiosResponse<T> = await this.getInstance().put(url, data, config);
+    const response: AxiosResponse<T> = await this.getInstance().put(url, data, {
+      ...config,
+      withCredentials: true, // Ensure credentials are sent
+    });
     return response.data;
   }
 
@@ -78,7 +86,10 @@ class ApiService {
     data?: Record<string, any>,
     config?: AxiosRequestConfig
   ): Promise<T> {
-    const response: AxiosResponse<T> = await this.getInstance().patch(url, data, config);
+    const response: AxiosResponse<T> = await this.getInstance().patch(url, data, {
+      ...config,
+      withCredentials: true, // Ensure credentials are sent
+    });
     return response.data;
   }
 
@@ -91,6 +102,7 @@ class ApiService {
     const response: AxiosResponse<T> = await this.getInstance().delete(url, {
       ...config,
       params,
+      withCredentials: true, // Ensure credentials are sent
     });
     return response.data;
   }

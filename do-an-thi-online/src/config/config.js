@@ -3,10 +3,10 @@ import { envToBoolean } from "../utils/env.js";
 dotenv.config();
 
 export const configdb = {
-    use_env_variable: "postgres://postgres:100845@localhost:5432/postgres",
-    // use_env_variable: "postgres://user:password@localhost:5432/mydatabase",
+    use_env_variable: "postgres://postgres:100845@localhost:5432/demodb",
     dbSyncForce: envToBoolean('DB_SYNC_FORCE'),
     dbSyncAlter: envToBoolean('DB_SYNC_ALTER'),
+    dbSeed: envToBoolean('DB_SEED'),
     username: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '100845',
     database: process.env.DATABASE || 'demodb',
@@ -18,6 +18,6 @@ export const configdb = {
 export const configJwt = {
   jwtSecret: process.env.JWT_SECRET,
   exp: Math.floor(Date.now() / 1000) + (60 * 60),
-  authCookiePrefix: 'authCookie',
+  authCookiePrefix: 'authToken',
   authHeaderPrefix: 'Bearer ',
 }

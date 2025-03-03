@@ -4,6 +4,11 @@ import { useGlobalStore } from "@/store/global-store";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
+import { facebook, google, logo } from "../../../public";
+import Image from 'next/legacy/image'
+import { wh_logo, wh_logo_google } from "@/utils/constants";
+import ApiService from "@/utils/api";
+import { RegisterResponse, ResponseUser, User } from "@/utils/type";
 
 interface AuthFormProps {
   defaultEmail?: string; // Nhận email mặc định (nếu có)
@@ -13,7 +18,8 @@ interface AuthFormProps {
 
 
 export default function AuthForm({haveAccount}:AuthFormProps) {
-  const { login,register } = useAuthStore();
+  const { login, register } = useAuthStore();
+  const { setUser } = useGlobalStore();
   const router = useRouter();
 
   const { loading, error, clearError } = useGlobalStore();
@@ -42,21 +48,53 @@ export default function AuthForm({haveAccount}:AuthFormProps) {
     
     if (signIn) {
       const res = await login(email, password);
-      if (res) {
-        router.push("/dashboard"); // Chuyển hướng đến dashboard
+      const resUser:ResponseUser = await ApiService.get("/me");
+      if (resUser.data.user) {
+        setUser(resUser.data.user)
+        const userStorage = {
+          isAdmin: resUser.data.user.isAdmin,
+          name: resUser.data.user.name,
+          email: resUser.data.user.email,
+        }
+        localStorage.setItem('user', JSON.stringify(userStorage))
+
+        switch (resUser.data.user.isAdmin) {
+          case true:
+            router.push("/admin/dashboard"); 
+            break;
+          default:
+            router.push("/dashboard"); 
+            break;
+        }
       }
     }else{
-      const res = await register(name, email, password);
-      if (res) {
-        router.push("/dashboard"); // Chuyển hướng đến dashboard
+      await register(name, email, password);
+      const resUser:ResponseUser = await ApiService.get("/me");
+
+      if (resUser.success && resUser.data) {
+        setUser(resUser.data.user)
+        const userStorage = {
+          isAdmin: resUser.data.user.isAdmin,
+          name: resUser.data.user.name,
+          email: resUser.data.user.email,
+        }
+        localStorage.setItem('user', JSON.stringify(userStorage))
+        switch (resUser.data.user.isAdmin) {
+          case true:
+            router.push("/admin/dashboard"); 
+            break;
+          default:
+            router.push("/dashboard"); 
+            break;
+        }
       }
     }
   };
 
   return (
-    <div className="w-full max-w-sm  p-6 rounded-3xl shadow-2xl">
+    <div className="w-full max-w-lg  p-6 rounded-3xl shadow-2xl">
       <div className="flex justify-center">
-        <img src="/logo.png" alt="Logo" className="w-12 h-12 mb-4" />
+        <Image src={logo} alt="Logo" width={wh_logo} height={wh_logo} className="w-12 h-12 mb-4" />
       </div>
       <h2 className="text-2xl font-semibold text-center">Create your Free Account</h2>
       <div className="flex justify-center my-4">
@@ -66,14 +104,16 @@ export default function AuthForm({haveAccount}:AuthFormProps) {
         </button>
       </div>
       <button className="w-full bg-white border border-gray-300 rounded-lg py-2 flex items-center justify-center mb-3">
-        <div className='flex justify-around items-center'>
-          <img src="/icons/google.png" className="w-5 h-5 mr-2" />
-          Continue with Google
+        <div className='flex justify-around items-center w-1/2'>
+          <Image src={google} width={wh_logo_google} height={wh_logo_google} />
+          <div>
+            Continue with Google
+          </div>
         </div>
       </button>
       <button className="w-full bg-white border border-gray-300 rounded-lg py-2 flex items-center justify-center mb-3">
-      <div className='flex justify-between items-center '>
-        <img src="/icons/facebook.svg" className="w-5 h-5 mr-2" />
+      <div className='flex justify-around items-center  w-1/2'>
+        <Image src={facebook} width={wh_logo_google} height={wh_logo_google}  className="w-5 h-5 mr-2" />
           Continue with Facebook
         </div>
       </button>
