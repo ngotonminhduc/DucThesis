@@ -9,16 +9,32 @@ import { StatusTest } from "../utils/type.js";
 export const createTest = async (req, res) => {
   const { examId } = req.body;
   if (!examId) {
-    throw new Error("Invalid Params");
+    throw new Error("Tham số không hợp lệ");
   }
   const existExam = await Exam.findOne({ where: { id: examId } }).then((r) =>
     r ? true : false
   );
   if (!existExam) {
-    throw new Error("Invalid Exam");
+    throw new Error("Bài kiểm tra không hợp lệ");
   }
-  const u = getAuthUser(req);
-  const correctAnswersMap = mappingCorrectAnswers(examId);
+  const u = await getAuthUser(req);
+  const correctAnswersMap = await mappingCorrectAnswers(examId);
+
+  const existTest = await Test.findOne({
+    where: {
+      userId: u.id,
+      examId,
+    },
+  }).then((r) => r?.toJSON());
+
+  if (existTest) {
+    res.status(200).json({
+      success: true,
+      data: existTest,
+    });
+    return;
+  }
+
   const t = await Test.create({
     examId,
     userId: u.id,
@@ -35,19 +51,86 @@ export const createTest = async (req, res) => {
 };
 
 export const getTests = async (req, res) => {
-  const { id } = req.query;
+  const u = await getAuthUser(req);
 
-  if (!id) {
-    throw new Error("Invalid Params");
+  if (!u) {
+    throw new Error("Tài khoản không tồn tại");
   }
-  const tests = await Test.findAll({ where: { id } }).then((arr) =>
-    arr.map((r) => r.toJSON())
+
+  const tests = await Test.findAll({
+    where: { userId: u.id, status: StatusTest.Locked },
+  }).then((arr) => arr.map((r) => r.toJSON()));
+  const r = await Promise.all(
+    tests.map(async (t) => {
+      const exam = await Exam.findOne({ where: { id: t.examId } }).then((d) =>
+        d?.toJSON()
+      );
+      return {
+        ...t,
+        exam,
+      };
+    })
   );
 
   res.status(200).json({
     success: true,
+    data: r,
+  });
+};
+
+export const getTest = async (req, res) => {
+  const { id } = req.query;
+
+  if (!id) {
+    throw new Error("Tham số không hợp lệ");
+  }
+
+  const t = await Test.findOne({
+    where: { id, status: StatusTest.Locked },
+    order: [["finalAt", "desc"]],
+  }).then((r) => r?.toJSON());
+
+  if (!t) {
+    throw new Error("KHông tìm thấy bài thi");
+  }
+  const exam = await Exam.findOne({ where: { id: t.examId } }).then((r) =>
+    r?.toJSON()
+  );
+  res.status(200).json({
+    success: true,
     data: {
-      tests,
+      ...t,
+      exam,
+    },
+  });
+};
+
+/** @type {express.RequestHandler} */
+export const activeTest = async (req, res) => {
+  const { examId, startAt } = req.body;
+  if (!examId || typeof examId !== "string" || !startAt) {
+    throw new Error("Tham số không hợp lệ");
+  }
+  const u = await getAuthUser(req);
+  await Test.update(
+    { status: StatusTest.TakingATest, startAt: new Date(startAt) },
+    { where: { examId, userId: u.id, status: StatusTest.Normal } }
+  );
+
+  const { correctAnswersMap, ...r } = await Test.findOne({
+    where: { examId, userId: u.id },
+  }).then((r) => r?.toJSON());
+  if (!r) {
+    throw new Error("Bài thi không tồn tại");
+  }
+  const exam = await Exam.findOne({ where: { id: r.examId } }).then((r) =>
+    r?.toJSON()
+  );
+  res.status(200).json({
+    success: true,
+    data: {
+      ...r,
+      exam
     },
   });
 };
@@ -56,18 +139,13 @@ export const deleteTest = async (req, res) => {
   const { id } = req.body;
 
   if (!id) {
-    throw new Error("Invalid Params");
+    throw new Error("Tham số không hợp lệ");
   }
 
-  const existTest = await Test.findOne({ where: { id } }).then((r) =>
-    r?.toJSON()
-  );
-
-  if (!existTest) {
-    throw new Error("Can not delete Test!");
+  const r = await Test.destroy({ where: { id } });
+  if (r < 1) {
+    throw new Error("Lỗi xoá lịch sử thi");
   }
-
-  await Test.destroy({ where: { id } });
 
   res.status(200).json({
     success: true,
@@ -75,24 +153,49 @@ export const deleteTest = async (req, res) => {
   });
 };
 
+// answers: {
+//   quetionsId: [
+//     answer1 chon,
+//   ],
+//   questionId2:[
+//     answer2 chon,
+//   ],
+// nếu là tự luận
+//    questionId3:[
+//     content
+//   ],
+//   ....
+// }
 /** @type {express.RequestHandler} */
-export const submitTest = async (req, res) => {
-  const { id, answers } = req.body;
-  if (!id && !answers && typeof answers !== "object") {
-    throw Error("Invalid params");
+export const caculateTestScore = async (req, res) => {
+  const { id, answers, finalAt } = req.body;
+
+  if (!id || !answers || typeof answers !== "object" || !finalAt) {
+    throw Error("Tham số không hợp lệ");
   }
+
   const t = await Test.findOne({ where: { id } }).then((r) => r?.toJSON());
-  const u = getAuthUser(req);
+  if(!t){
+    throw new Error('Không tìm thấy bài thi')
+  }
+  const u = await getAuthUser(req);
+
   const isTestOwner = t.userId === u.id;
   if (!t || !isTestOwner) {
-    throw new Error("User not have permission");
+    throw new Error("Người dùng không có quyền");
   }
   //caculate score and update
-  const score = calcScore(answers, t.correctAnswersMap);
-  await Test.update(
+  const { score, correctAnswersCount } = calcScore(
+    answers,
+    t.correctAnswersMap
+  );
+  const [updated] = await Test.update(
     {
       score,
-      status: StatusTest.Locked
+      answersMap: answers,
+      status: StatusTest.Locked,
+      correctAnswersCount,
+      finalAt: new Date(finalAt),
     },
     {
       where: {
@@ -100,10 +203,16 @@ export const submitTest = async (req, res) => {
       },
     }
   );
+  if (updated < 1) {
+    throw new Error("Lỗi tính toán điểm");
+  }
+  const r = await Test.findOne({ where: { id } }).then((r) => r?.toJSON());
+  const exam = await Exam.findOne({where: {id: r.examId}}).then(r => r?.toJSON())
   res.status(200).json({
     success: true,
     data: {
-      score,
+      ...r,
+      exam
     },
   });
 };

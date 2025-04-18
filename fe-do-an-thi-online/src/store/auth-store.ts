@@ -1,83 +1,110 @@
 import { create } from "zustand";
-import axios from "axios";
-import { useGlobalStore } from "./global-store";
-import { toast } from "react-toastify";
-import { LoginResponse, RegisterResponse, User } from "@/utils/type";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { authService, TRegister, TUser } from "@/services/authService";
+import { cookieStorage } from "@/utils/cookie";
+
+export type AuthType = "default" | "login" | "register";
 
 interface AuthState {
-  token: string;
-  login: (email: string, password: string) => Promise<LoginResponse | { success: false; message: string }>;
-  register: (name: string, email: string, password: string) => Promise<RegisterResponse>;
-  verifyToken: () => Promise<User | { success: boolean; message: string }>;
+  user: TUser | null;
+  type: AuthType;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading?: boolean;
+  error: string | null;
+
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  register: (data: TRegister) => Promise<void>;
+  checkAuthStatus: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  token: '',
-
+  token: cookieStorage.getItem(authService.authCookieCname) as string,
+  user: null,
+  isAuthenticated: false,
+  isLoading: false,
+  type: "default",
+  error: null,
   login: async (email, password) => {
-    const { setLoading, setError, setUser } = useGlobalStore.getState();
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_HOST_API}/login`, { email, password, isAdmin: true });
-      
-      if (res.data.data) {
-        set({ token: res.data.data.token });
-        document.cookie = `authToken=${res.data.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
-      }
-
-      return res.data.data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại!";
-      toast.error(errorMessage);
-      return { success: false, message: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  },
-
-  register: async (name, email, password) => {
-    const { setLoading, setError, setUser } = useGlobalStore.getState();
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await axios.post(`${process.env.NEXT_PUBLIC_HOST_API}/register`, { name, email, password,isAdmin: true });
-      if (res.data.data) {
-        set({ token: res.data.data.token });
-        document.cookie = `authToken=${res.data.data.token}; path=/; max-age=${7 * 24 * 60 * 60}`;
-      }
-      return res.data.data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Có lỗi xảy ra, vui lòng thử lại!";
-      toast.error(errorMessage);
-      return { success: false, message: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  },
-
-  verifyToken: async () => {
-    try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_HOST_API}/me`, {
-        withCredentials: true,
+    set({ isLoading: true });
+    const r = await authService.login(email, password);
+    if (r.message) {
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        error: r.message,
+        type: "login",
       });
-      return res.data.data;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || "Token không hợp lệ!";
-      toast.error(errorMessage);
-      return { success: false, message: errorMessage };
+      return;
     }
+    const { token } = r.data!;
+    cookieStorage.setItem(authService.authCookieCname, token);
+    set({
+      isLoading: false,
+      isAuthenticated: true,
+      token,
+      type: "default",
+    });
   },
-
+  register: async (data) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await authService.register(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        error: r.message,
+        type: "register",
+      });
+      return;
+    }
+    const { token } = r.data!;
+    cookieStorage.setItem(authService.authCookieCname, token);
+    set({
+      isLoading: false,
+      isAuthenticated: true,
+      type: "default",
+      token
+    });
+  },
   logout: () => {
-    const { setUser } = useGlobalStore.getState();
-
-    document.cookie = "authToken=; path=/; max-age=0"; // Xoá cookie
-    setUser(null);
+    cookieStorage.removeItem(authService.authCookieCname);
+    set({
+      isAuthenticated: false,
+      user: null,
+      token: null,
+    });
+  },
+  checkAuthStatus: async () => {
+    const { token } = get();
+    if (!token) return;
+    set({ isLoading: true });
+    const r = await authService.me();
+    if (r.message) {
+      set({
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+      });
+      return;
+    }
+    set({
+      isLoading: false,
+      isAuthenticated: true,
+      user: r.data!,
+    });
+  },
+  clearError: () => {
+    set({ error: null });
   },
 }));

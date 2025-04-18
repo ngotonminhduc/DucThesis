@@ -1,51 +1,160 @@
 import { create } from "zustand";
-import { Answer } from "@/utils/type";
+import { persist } from "zustand/middleware";
+import {
+  answerService,
+  TAnswer,
+  TCreateAnswer,
+} from "@/services/answerService";
 
-interface AnswersState {
-  answers: Answer[];
-  setAnswers: (newAnswers: Answer[]) => void;
-  addAnswer: (params: Answer) => void;
-  updateAnswer: (params: { index: number; content: string; isCorrect: boolean }) => void;
-  removeAnswer: (index: number) => void;
-  clearAnswers: () => void;
+interface AnswerState {
+  answers: { [k in string]-?: TAnswer[] };
+  isLoading: boolean;
+  error: string | null;
+
+  createAnswer: (data: TCreateAnswer) => Promise<void>;
+  createAnswers: (data: TCreateAnswer[], force?: boolean) => Promise<void>;
+  getAnswers: (questionId: string) => Promise<void>;
+  updateAnswer: (data: Partial<TAnswer>, questionId: string) => Promise<void>;
+  deleteAnswer: (id: string, questionId: string) => Promise<void>;
+  deleteAllAnswers: (examId: string) => Promise<void>;
+  clearError: () => void;
 }
 
-export const useAnswersStore = create<AnswersState>((set, get) => ({
-  answers: [],
-
-  setAnswers: (newAnswers) => set({ answers: newAnswers }),
-
-  addAnswer: ({ content, isCorrect }) => {
-    set((state) => ({
-      answers: [...state.answers, { content, isCorrect }],
-    }));
-  },
-
-  updateAnswer: ({ index, content, isCorrect }) => {
-    set((state) => {
-      if (index < 0 || index >= state.answers.length) {
-        console.warn(`Invalid index ${index}.`);
-        return state;
-      }
-      return {
-        answers: state.answers.map((answer, i) =>
-          i === index ? { content, isCorrect } : answer
-        ),
-      };
+export const useAnswerStore = create<AnswerState>((set, get) => ({
+  answers: {},
+  isLoading: false,
+  error: null,
+  createAnswer: async (data) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.create(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const answers = get().answers;
+    answers[data.questionId]?.push(r.data!);
+    set({
+      answers,
+      isLoading: false,
     });
   },
-
-  removeAnswer: (index) => {
-    set((state) => {
-      if (index < 0 || index >= state.answers.length) {
-        console.warn(`Invalid index ${index}.`);
-        return state;
-      }
-      return {
-        answers: state.answers.filter((_, i) => i !== index),
-      };
+  createAnswers: async (data, force) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.createMany(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const d = r.data!;
+    let newAnswers = {};
+    if (!force) {
+      newAnswers = d;
+    } else {
+      const answers = get().answers;
+      answers[d[0].questionId]?.push(...d);
+      newAnswers = answers;
+    }
+    set({
+      answers: newAnswers,
+      isLoading: false,
     });
   },
+  getAnswers: async (questionId) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.getAnswers(questionId);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const answers = get().answers;
+    answers[questionId] = r.data!;
+  
+    set({
+      answers,
+      isLoading: false,
+    });
+  },
+  updateAnswer: async (data, questionId) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.update(data);
+    const answers = get().answers;
+    const d = answers[questionId]?.map((r2) => {
+      let data = r2;
+      if (r2.id === r.data!.id) {
+        data = r.data!;
+      }
+      return data;
+    });
+    answers[questionId] = d;
+    console.log(answers);
 
-  clearAnswers: () => set({ answers: [] }),
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    set({
+      isLoading: false,
+      answers,
+    });
+  },
+  deleteAnswer: async (id, questionId) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.delete(id);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const answers = get().answers;
+
+    answers[questionId] = answers[questionId]?.filter((a) => a.id !== id);
+    set({
+      isLoading: false,
+      answers,
+    });
+  },
+  deleteAllAnswers: async (examId) => {
+    set({
+      isLoading: true,
+    });
+    const r = await answerService.deleteAll(examId);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    set({
+      isLoading: false,
+      answers: {},
+    });
+  },
+  clearError: () => {
+    set({ error: null });
+  },
 }));

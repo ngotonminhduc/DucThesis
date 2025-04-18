@@ -20,6 +20,9 @@ export const Answer = s2g.define(
       type: DataTypes.BOOLEAN,
       allowNull: false,
     },
+    idx: {
+      type: DataTypes.INTEGER,
+    },
   },
   {
     tableName: "Answer",

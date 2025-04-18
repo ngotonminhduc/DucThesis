@@ -6,10 +6,11 @@ export const seedAdmin = async () => {
     {
       email: "thionline@gmail.com",
       name: "Thi Online Admin",
-      password: hashPassword('Thionline@2025'),
-      isAdmin: true
+      password: hashPassword("Thionline@2025"),
+      isAdmin: true,
     },
   ];
+  typeof admin === 'undefined'
   const p = admin.map(async (u) => {
     const d = await User.findOne({
       where: {

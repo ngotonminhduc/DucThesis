@@ -1,174 +1,225 @@
 "use client";
 
-import Image from "next/legacy/image";
-import { logo } from "../../../../../public";
-import { wh_logo_medium } from "@/utils/constants";
-import { TopicExam } from "@/components/exam/TopicExam";
-import { useEffect, useState } from "react";
-import { 
-  ItemExam,
-  ListAnswer,
-  ListQuestion,
-  ListUpdateQuestion,
-  ResponseAnswers,
-  ResponseExam,
-  ResponseExams,
-  ResponseQuestion,
-  ResponseQuestions,
+import { CardExam } from "@/components/card/CardExam";
+import React, {
+  MouseEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
- } from "@/utils/type";
-import ApiService from "@/utils/api";
-import { useParams, useRouter } from "next/navigation";
-import { QuestionAnswers } from "@/components/exam/QuestionAnswers";
+import { ExamHeader } from "@/components/exam/ExamHeader/ExamHeader";
 import { useExamStore } from "@/store/exam-store";
 import { toast } from "react-toastify";
-import { useGlobalStore } from "@/store/global-store";
-import { CardExam } from "@/components/card/CardExam";
+import { useParams, useRouter } from "next/navigation";
+import Spinner from "@/components/effect/Spinner";
+import { Button } from "@/components/button/Button";
+import { useQuestionStore } from "@/store/question-store";
+import Question from "@/components/exam/Question/Question";
+import { useAnswerStore } from "@/store/answer-store";
+import { TCreateAnswer } from "@/services/answerService";
+import {
+  AddItemHandler,
+  ChangeStateHandler,
+  RemoveItemHandler,
+  TStateQuestion,
+  UpdateItemHandler,
+} from "@/components/exam/Question/type";
+import { UpdateItemHandler as UpdateExamHandler } from "@/components/exam/ExamHeader/type";
+import { TExam } from "@/services/examService";
 
-
-const page = () => {
-  const params = useParams();
+function DetailExamPage() {
+  const scrollBottomRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const [itemExam, setItemExam] = useState<ItemExam>(null)
-  const { createStatusCreateUpdate } = useGlobalStore()
+  const params = useParams<{ id: string }>();
+  const { updateExam, detailExam, exams, error, isLoading, clearError } =
+    useExamStore();
+  const [questions, setQuestions] = useState<TStateQuestion[]>([]);
   const {
-    updateExam,
-    setQuestions,
-    questions,
-    exam,
-    clearExam,
-    clearAnswers,
-    clearQuestions,
-    setExam,
-  } = useExamStore();
-  
-  
-  const [questionAnswers, setQuestionAnswers] = useState<ListUpdateQuestion | []>([])
+    getQuestions,
+    error: questionError,
+    questions: storedQuestions,
+    isLoading: isQuestionLoading,
+    deleteAllQuestions,
+    createQuestion,
+    clearError: clearQuestionError,
+  } = useQuestionStore();
 
- useEffect(() => {
-    const getExam = async () => {
-      const resExam: ResponseExam = await ApiService.get("/exam/get",{ id: params.id });
-      const questions: ResponseQuestions = await ApiService.get("/question/gets",{ examId: params.id });
-      const answers: ResponseAnswers = await ApiService.get("/answer/gets",{ examId: params.id });
-      setItemExam(resExam.data)
-      const updatedQuestions = questions.data.questions.map((question) => ({
-        ...question,
-        answers: answers.data.answers.filter((answer) => answer.questionId === question.id),
-      }));
-      useExamStore.getState().setExam({
-        ...resExam.data,
-        questions: updatedQuestions,
-      });
-      useExamStore.getState().setQuestions(updatedQuestions);
-      useExamStore.getState().setAnswers(answers.data.answers);
-      setQuestionAnswers(updatedQuestions);
+  const { createAnswers, deleteAllAnswers } = useAnswerStore();
+
+  const [canUpdate, setCanUpdate] = useState<boolean>(false);
+  const [exam, setExam] = useState<TExam>();
+
+  useEffect(() => {
+    (async () => {
+      await detailExam(params.id);
+      await getQuestions(params.id);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!exams.get(params.id)) {
+      return;
     }
-    getExam()
-  },[params.id])
+    setExam(exams.get(params.id));
+  }, [exams.get(params.id)]);
 
+  useEffect(() => {
+    setQuestions(storedQuestions[params.id] ?? []);
+  }, [storedQuestions.length]);
 
+  useEffect(() => {
+    scrollBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [isQuestionLoading]);
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // console.log("questions onSubmit: ", questions);
-  
-    try {
-      // Step 1: Cập nhật Exam
-      await ApiService.patch("/exam/update", {
-        id: params.id,
-        topic: exam?.topic,
-        description: exam?.description,
-        status: exam?.status,
-        examTime: Number(exam?.examTime),
-      });
-  
-      // Step 2: Xử lý câu hỏi và câu trả lời
-      await Promise.all(
-        questions.map(async (q) => {
-          let questionId = q.id;
-  
-          // Nếu câu hỏi chưa có ID, tạo mới
-          if (!q.id) {
-            const createQues = await ApiService.post<ResponseQuestion>("/question/create", {
-              examId: params.id,
-              content: q.content,
-            });
-            questionId = createQues.data.id;
-          } else {
-            // Nếu đã có ID, cập nhật
-            await ApiService.patch("/question/update", {
-              id: q.id,
-              content: q.content,
-            });
-          }
-  
-          // Step 3: Duyệt qua danh sách câu trả lời
-          await Promise.all(
-            q.answers.map(async (a) => {
-              if (!a.id) {
-                // Nếu câu trả lời chưa có ID, tạo mới
-                await ApiService.post("/answer/create", {
-                  examId: params.id,
-                  content: a.content,
-                  questionId,
-                  isCorrect: a.isCorrect,
-                });
-              } else {
-                // Nếu đã có ID, cập nhật
-                await ApiService.patch("/answer/update", {
-                  id: a.id,
-                  content: a.content,
-                  isCorrect: a.isCorrect,
-                });
-              }
-            })
-          );
-        })
-      );
-  
-      createStatusCreateUpdate('Update successfully!',true)
-      router.back();
-      clearExam();
-      clearQuestions();
-      clearAnswers();
-    } catch (error: any) {
-      console.error("Error updating exam:", error);
-      // toast.error(error.response?.data?.message);
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
     }
+  }, [error]);
+
+  useEffect(() => {
+    if (questionError) {
+      toast.error(questionError);
+      clearQuestionError();
+    }
+  }, [questionError]);
+
+  const handleUpdateExamState: UpdateExamHandler = useCallback((data) => {
+    setExam(data);
+    setCanUpdate(!!data.topic && !!data.description && data.examTime > 0);
+  }, []);
+
+  const handleCancel: MouseEventHandler<HTMLButtonElement> = async () => {
+    router.push("/admin/dashboard");
   };
-  
+
+  const handleUpdatequestion: UpdateItemHandler = useCallback(
+    (key, question) => {
+      questions[key] = question;
+      setQuestions([...questions]);
+    },
+    [questions]
+  );
+
+  const handleUpdateExam: MouseEventHandler<HTMLButtonElement> = async () => {
+    if (!exam) {
+      return;
+    }
+    const { id, ...exm } = exam;
+    await updateExam(id, exm);
+    await deleteAllQuestions(params.id);
+    await deleteAllAnswers(params.id);
+    const bulkAnswers = await questions.reduce(async (prev, cur) => {
+      const { answers: ads, ...qd } = cur;
+      const nq = await createQuestion(qd);
+      const d = await prev;
+      const a =
+        qd.type === "Essay"
+          ? []
+          : (ads
+              ?.map(({ id, ...a }) => ({ ...a, questionId: nq?.id! }))
+              .filter(Boolean) as TCreateAnswer[] | undefined) ?? [];
+      return [...d, ...a];
+    }, Promise.resolve<TCreateAnswer[]>([]));
+    if (bulkAnswers.length) {
+      await createAnswers(bulkAnswers);
+    }
+    router.push("/admin/dashboard");
+  };
+
+  const handleCheckCanUpdate: ChangeStateHandler = useCallback(
+    (reason, data) => {
+      let qs = questions;
+      switch (reason) {
+        case "add":
+          break;
+        case "update":
+          break;
+        case "delete":
+          if (!data) {
+            return;
+          }
+          qs = questions.filter((_, i) => i !== data.key);
+          break;
+        default:
+          break;
+      }
+      const can =
+        !!exam?.topic &&
+        !!exam?.examTime &&
+        !!exam?.description &&
+        qs.every((q) => q.canUpdate);
+      setCanUpdate(can);
+    },
+    [questions]
+  );
+
+  const handleAddQuestion: AddItemHandler = (question) => {
+    setQuestions([...questions, question]);
+  };
+
+  const handleRemoveQuestion: RemoveItemHandler = useCallback(
+    (key) => {
+      setQuestions(questions.filter((_, i) => i !== key));
+    },
+    [questions]
+  );
+
+  useEffect(() => {
+    scrollBottomRef.current;
+  }, [questions]);
 
   return (
-    <form onSubmit={onSubmit}>
-      <div className="h-screen pt-[70px] overflow-y-auto">
-        <div className="flex justify-between items-center w-full mr-8 fixed -top-0  h-14 px-5 shadow-md mb-5 bg-white">
-          <div>
-            <Image src={logo} alt="Logo" width={wh_logo_medium} height={wh_logo_medium} className="w-12 h-12 mb-4" />
-          </div>
-          <div className="px-9">
-            <button className="bg-green-500 w-36 h-14 rounded-lg" type="submit">Submit</button>
-          </div>
-        </div>
-        <div className="w-full flex flex-col justify-center items-center pb-5 ">
-          <CardExam className="lg:w-1/2 md:w-1/3 sm:w-1/3 flex flex-col justify-center items-center ">
-            <TopicExam 
-              valueTopic={itemExam?.topic}
-              valueDescription={itemExam?.description}
-              valueExamTime={itemExam && itemExam.examTime ? itemExam.examTime+'': ''}
-              valueDropdown={itemExam ? itemExam.status: 'pending'}
-            />
-
-            {
-              questions && 
-              <QuestionAnswers 
-                questionArray={questions} 
+    <>
+      {!isLoading ? (
+        <CardExam className="lg:w-1/2 md:w-1/3 sm:w-1/3 flex flex-col justify-center items-center ">
+          <ExamHeader onUpdateItem={handleUpdateExamState} val={exam} />
+          {questions.map((q, i) => {
+            return (
+              <Question
+                onRemoveItem={handleRemoveQuestion}
+                onUpdateItem={handleUpdatequestion}
+                onChangeState={handleCheckCanUpdate}
+                isCreate
+                canEdit
+                key={i}
+                incrementId={i}
+                val={q}
               />
-            }
-          </CardExam>
-        </div>
-      </div>
-    </form>
+            );
+          })}
+          <Question
+            isAddItemComponent
+            onAddItem={handleAddQuestion}
+            canEdit
+            isCreate
+          />
+          <div className="w-full flex justify-between p-2">
+            <Button
+              customStyle={`order-first cursor-pointer bg-red-500 hover:bg-red-600 rounded-sm p-2 text-center w-24  text-gray-50`}
+              text="Huỷ"
+              onClick={handleCancel}
+            />
+            <Button
+              customStyle={`order-first ${
+                canUpdate
+                  ? "cursor-pointer bg-green-500 hover:bg-green-600"
+                  : "cursor-not-allowed bg-gray-400"
+              } rounded-sm p-2 text-center w-24 text-gray-50`}
+              text="Cập nhật"
+              onClick={handleUpdateExam}
+            />
+          </div>
+        </CardExam>
+      ) : (
+        <Spinner />
+      )}
+      <div ref={scrollBottomRef}></div>
+    </>
   );
 }
 
-export default page
+export default React.memo(DetailExamPage);

@@ -1,0 +1,70 @@
+import { AxiosError, AxiosRequestHeaders } from "axios";
+import { AxiosService, TBaseResponseData } from "./axiosService";
+import { cookieStorage } from "@/utils/cookie";
+
+export type TUser = {
+  email: string;
+  name: string;
+  isAdmin: boolean;
+} & TBaseResponseData;
+
+export type TRegister = Pick<TUser, 'name' | 'email'> & {password: string}
+
+export class AuthService {
+  private static instance: AuthService;
+  private api: AxiosService;
+  authCookieCname = "authUser";
+
+  private constructor() {
+    this.api = AxiosService.init();
+    this.setupInterceptors();
+  }
+
+  static init(): AuthService {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
+  }
+
+  private getToken = () => {
+    return cookieStorage.getItem(this.authCookieCname);
+  };
+
+  private setupInterceptors(): void {
+    this.api.getInstance.interceptors.request.use(
+      (config) => {
+        const token = this.getToken();
+        if (token) {
+          config.headers = {
+            ...config.headers,
+            Authorization: `Bearer ${token}`,
+          } as AxiosRequestHeaders;
+        }
+        return config;
+      },
+      (error: AxiosError) => Promise.reject(error)
+    );
+  }
+
+  login = async (email: string, password: string) => {
+    return this.api.post<{ token: string }>("/login", {
+      email,
+      password,
+    });
+  };
+
+  register = async ({ email, name, password }: TRegister) => {
+    return this.api.post<{token: string}>("/register", {
+      name,
+      email,
+      password,
+    });
+  };
+
+  me = () => {
+    return this.api.get<TUser>("/me");
+  };
+}
+
+export const authService = AuthService.init();

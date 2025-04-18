@@ -4,7 +4,7 @@ interface User {
   // id: string;
   name: string;
   email: string;
-  isAdmin: boolean
+  isAdmin: boolean;
 }
 
 interface GlobalStore {
@@ -12,10 +12,10 @@ interface GlobalStore {
   loading: boolean;
   statusCreateUpdate: { label: string; status: boolean };
   error: string | null;
-  
+
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
-  
+
   setError: (error: string | null) => void;
   clearError: () => void;
 
@@ -28,13 +28,15 @@ export const useGlobalStore = create<GlobalStore>((set) => ({
   loading: false,
   error: null,
   statusCreateUpdate: { label: "", status: false },
-  
+
   setUser: (user) => set({ user }),
   setLoading: (loading) => set({ loading }),
 
   setError: (error) => set({ error }),
   clearError: () => set({ error: null }),
 
-  createStatusCreateUpdate: (label, status) => set({ statusCreateUpdate: { label, status } }),
-  clearStatusCreateUpdate: () => set({ statusCreateUpdate: { label: "", status: false } }),
+  createStatusCreateUpdate: (label, status) =>
+    set({ statusCreateUpdate: { label, status } }),
+  clearStatusCreateUpdate: () =>
+    set({ statusCreateUpdate: { label: "", status: false } }),
 }));

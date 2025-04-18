@@ -1,6 +1,6 @@
 import { s2g } from "../config/database.js";
 import { BaseModle } from "./Base.js";
-import { DataTypes, Sequelize } from "sequelize";
+import { DataTypes } from "sequelize";
 
 export const Exam = s2g.define(
   "Exam",
@@ -20,7 +20,7 @@ export const Exam = s2g.define(
     status: {
       type: DataTypes.STRING,
       defaultValue: "inactive",
-    }
+    },
   },
   {
     tableName: "Exam",

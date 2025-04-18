@@ -1,36 +1,140 @@
 import { create } from "zustand";
-import { Questions } from "@/utils/type";
+import {
+  questionService,
+  TCreateQuestion,
+  TQuestion,
+} from "@/services/questionService";
 
-interface QuestionsState {
-  questions: Questions[];
-  setQuestions: (questions: Questions[]) => void;
-  addQuestion: (examId: string, content: string) => void;
-  updateQuestion: (examId: string, newContent: string) => void;
-  deleteQuestion: (examId: string) => void;
+interface QuestionState {
+  questions: { [k in string]-?: TQuestion[] };
+  isLoading: boolean;
+  error: string | null;
+  createQuestion: (data: TCreateQuestion) => Promise<TQuestion | undefined>;
+
+  createQuestions: (
+    data: TCreateQuestion[],
+    force?: boolean
+  ) => Promise<TQuestion[] | undefined>;
+  updateQuestion: (data: Partial<TQuestion>) => Promise<void>;
+  getQuestions: (examId: string) => Promise<void>;
+  deleteAllQuestions: (examId: string) => Promise<void>;
+  clearError: () => void;
+  clearStore: () => void;
 }
 
-export const useQuestionsStore = create<QuestionsState>((set, get) => ({
-  questions: [],
-
-  setQuestions: (newQuestions) => set({ questions: newQuestions }),
-
-  addQuestion: (examId, content) => {
-    set((state) => ({
-      questions: [...state.questions, { examId, content, answers: [] }],
-    }));
+export const useQuestionStore = create<QuestionState>((set, get) => ({
+  questions: {},
+  isLoading: false,
+  error: null,
+  createQuestion: async (data: TCreateQuestion) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await questionService.create(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const d = r.data!;
+    const questions = get().questions;
+    questions[data.examId]
+      ? questions[data.examId]?.push(d)
+      : (questions[data.examId] = [d]);
+    set({
+      questions,
+      isLoading: false,
+    });
+    return r.data;
   },
-
-  updateQuestion: (examId, newContent) => {
-    set((state) => ({
-      questions: state.questions.map((q) =>
-        q.examId === examId ? { ...q, content: newContent } : q
-      ),
-    }));
+  createQuestions: async (data: TCreateQuestion[]) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await questionService.createMany(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const d = r.data!;
+    const questions = get().questions;
+    questions[data[0].examId] = d;
+    set({
+      questions,
+      isLoading: false,
+    });
+    return r.data;
   },
-
-  deleteQuestion: (examId) => {
-    set((state) => ({
-      questions: state.questions.filter((q) => q.examId !== examId),
-    }));
+  getQuestions: async (examId) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await questionService.getQuestions(examId);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    const questions = get().questions;
+    questions[examId] = r.data!
+    set({
+      questions,
+      isLoading: false,
+    });
+  },
+  updateQuestion: async (data) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await questionService.update(data);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    set({
+      isLoading: false,
+    });
+  },
+  deleteAllQuestions: async (examId: string) => {
+    set({
+      isLoading: true,
+      error: null,
+    });
+    const r = await questionService.deleteAll(examId);
+    if (r.message) {
+      set({
+        isLoading: false,
+        error: r.message,
+      });
+      return;
+    }
+    set({
+      isLoading: false,
+      questions: {},
+    });
+  },
+  clearError: () => {
+    set({ error: null });
+  },
+  clearStore: () => {
+    set({
+      questions: {},
+      isLoading: false,
+      error: null,
+    });
   },
 }));

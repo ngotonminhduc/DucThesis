@@ -15,25 +15,30 @@ import {
 import { authorizeSystemMiddleware } from "./middleware/authorizeSystem.middleware.js";
 import {
   createQuestion,
+  createQuestions,
   deleteQuestion,
+  deleteAllQuestions,
   getQuestions,
   updateQuestion,
 } from "./controller/question.controller.js";
 import {
   createAnswer,
+  createAnswers,
+  deleteAllAnswers,
   deleteAnswer,
   getAnswers,
   updateAnswer,
 } from "./controller/answer.controller.js";
 import {
+  activeTest,
+  caculateTestScore,
   createTest,
   deleteTest,
+  getTest,
   getTests,
-  updateTest,
-  submitTest,
 } from "./controller/test.controller.js";
 import { configdb } from "./config/config.js";
-import { seedAdmin } from "./seed/index.js"
+import { seedAdmin } from "./seed/index.js";
 
 process.on("uncaughtException", (err) => {
   console.error(err);
@@ -68,19 +73,21 @@ app.post(
   authorizeSystemMiddleware,
   createExam
 );
-app.patch(
+app.post(
   "/exam/update",
   verifyTokenMiddleware,
   authorizeSystemMiddleware,
   updateExam
 );
-app.get(
-  "/exam/gets",
-  verifyTokenMiddleware,
-  authorizeSystemMiddleware,
-  getExams
-);
-app.get("/exam/get", verifyTokenMiddleware, authorizeSystemMiddleware, getExam);
+
+/**
+ * nếu check authorizeSystemMiddleware thì client sẽ không gọi api được: 1 là tạo api khác 2 là không check
+ *
+ *  */
+app.get("/exam/gets", verifyTokenMiddleware, getExams);
+
+app.get("/exam/get", verifyTokenMiddleware, getExam);
+
 app.post(
   "/exam/delete",
   verifyTokenMiddleware,
@@ -95,23 +102,35 @@ app.post(
   authorizeSystemMiddleware,
   createQuestion
 );
-app.patch(
+
+// QUESTION
+app.post(
+  "/question/create-many",
+  verifyTokenMiddleware,
+  authorizeSystemMiddleware,
+  createQuestions
+);
+
+app.post(
   "/question/update",
   verifyTokenMiddleware,
   authorizeSystemMiddleware,
   updateQuestion
 );
-app.get(
-  "/question/gets",
-  verifyTokenMiddleware,
-  authorizeSystemMiddleware,
-  getQuestions
-);
+app.get("/question/gets", verifyTokenMiddleware, getQuestions);
+
 app.post(
   "/question/delete",
   verifyTokenMiddleware,
   authorizeSystemMiddleware,
   deleteQuestion
+);
+
+app.post(
+  "/question/delete-all",
+  verifyTokenMiddleware,
+  authorizeSystemMiddleware,
+  deleteAllQuestions
 );
 
 // ANSWER
@@ -121,18 +140,22 @@ app.post(
   authorizeSystemMiddleware,
   createAnswer
 );
-app.patch(
+
+app.post(
+  "/answer/create-many",
+  verifyTokenMiddleware,
+  authorizeSystemMiddleware,
+  createAnswers
+);
+
+app.post(
   "/answer/update",
   verifyTokenMiddleware,
   authorizeSystemMiddleware,
   updateAnswer
 );
-app.get(
-  "/answer/gets",
-  verifyTokenMiddleware,
-  authorizeSystemMiddleware,
-  getAnswers
-);
+app.get("/answer/gets", verifyTokenMiddleware, getAnswers);
+
 app.post(
   "/answer/delete",
   verifyTokenMiddleware,
@@ -140,11 +163,20 @@ app.post(
   deleteAnswer
 );
 
+app.post(
+  "/answer/delete-all",
+  verifyTokenMiddleware,
+  authorizeSystemMiddleware,
+  deleteAllAnswers
+);
 
 app.post("/test/create", verifyTokenMiddleware, createTest);
 app.get("/test/gets", verifyTokenMiddleware, getTests);
+app.get("/test/get", verifyTokenMiddleware, getTest);
 app.post("/test/delete", verifyTokenMiddleware, deleteTest);
-app.post("/test/submit", verifyTokenMiddleware, submitTest);
+app.post("/test/active", verifyTokenMiddleware, activeTest);
+app.post("/test/calc-score", verifyTokenMiddleware, caculateTestScore);
+
 
 app.use((err, req, res, next) => {
   console.log(err);
@@ -157,8 +189,8 @@ app.use((err, req, res, next) => {
 // Gọi hàm kết nối database, sau đó mới start server
 connectDatabase()
   .then(async () => {
-    if(configdb.dbSeed){
-      await seedAdmin()
+    if (configdb.dbSeed) {
+      await seedAdmin();
     }
     app.listen(PORT, () => {
       console.log(`🚀 Server chạy tại http://localhost:${PORT}`);

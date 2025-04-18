@@ -11,3 +11,8 @@ export const StatusTest = Object.freeze({
   Normal:"Normal",
   Locked: "Locked",
 });
+
+export const QuesType = Object.freeze({
+  MultipleChoice: "MultipleChoice",
+  Essay : "Essay ",
+});

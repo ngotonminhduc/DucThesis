@@ -21,10 +21,28 @@ export const Test = s2g.define(
     //Dùng string tránh rắc rối
     status: {
       type: DataTypes.STRING,
-      defaultValue: StatusTest.TakingATest,
+      defaultValue: StatusTest.Normal,
     },
+    // map  câu hỏi đúng để tính điểm
     correctAnswersMap: {
       type: DataTypes.JSON,
+    },
+    correctAnswersCount: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    // map lại những câu trả lời của user
+    answersMap: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    startAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    finalAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

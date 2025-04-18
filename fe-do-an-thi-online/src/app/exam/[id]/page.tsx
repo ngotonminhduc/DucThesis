@@ -1,206 +1,310 @@
 "use client";
 
-import Image from "next/legacy/image";
-import { logo } from "../../../../public";
-import { wh_logo_medium } from "@/utils/constants";
-import { TopicExam } from "@/components/exam/TopicExam";
-import { useEffect, useState } from "react";
-import { 
-  ItemExam,
-  ListAnswer,
-  ListQuestion,
-  ListUpdateQuestion,
-  ResponseAnswers,
-  ResponseExam,
-  ResponseExams,
-  ResponseQuestion,
-  ResponseQuestions,
-
- } from "@/utils/type";
-import ApiService from "@/utils/api";
-import { useParams, useRouter } from "next/navigation";
-import { useExamStore } from "@/store/exam-store";
-import { toast } from "react-toastify";
-import { useGlobalStore } from "@/store/global-store";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { CardExam } from "@/components/card/CardExam";
-import { formatTime } from "@/utils/formatTime";
-import { QuestionAnswersClient } from "@/components/exam/QuestionAnswersClient";
+import { toast } from "react-toastify";
+import { useParams, useRouter } from "next/navigation";
+import Spinner from "@/components/effect/Spinner";
+import { Button } from "@/components/button/Button";
+import { useQuestionStore } from "@/store/question-store";
+import { TExam } from "@/services/examService";
+import { useExamStore } from "@/store/exam-store";
+import { XCircleIcon } from "lucide-react";
+import { useModal } from "@/hooks/useModal";
+import ConfirmCancelTesting from "@/components/exam/Dialog/ConfirmCancelTesting";
+import TestQuestion from "@/components/exam/Question/TestQuestion";
+import { TQuestion } from "@/services/questionService";
+import TestExamHeader from "@/components/exam/ExamHeader/TestExamHeader";
+import { useTestStore } from "@/store/test-store";
+import { TAnswerMap } from "@/services/testService";
 
+type TStudentAnswer = {
+  questionId: string;
+  examId: string;
+  answer: string | null;
+  answerIds: string[];
+};
 
-const page = () => {
-  const params = useParams();
+function StudentExamPage() {
   const router = useRouter();
-  const [itemExam, setItemExam] = useState<ItemExam>(null)
-  const {
-    updateExam,
-    setQuestions,
-    questions,
-    exam,
-    clearExam,
-    clearAnswers,
-    clearQuestions,
-    setExam,
-    } = useExamStore();
-  const { createStatusCreateUpdate } = useGlobalStore()
-  
-  const [questionAnswers, setQuestionAnswers] = useState<ListUpdateQuestion | []>([])
-
-  const [user, setUser] = useState(null);
-  const [timeStamp, setTimeStamp] = useState<number>(itemExam && itemExam.examTime > 0 ? itemExam.examTime : 0);
+  const params = useParams<{ id: string }>();
+  const { detailExam, exams } = useExamStore();
+  const { getQuestions, questions: storedQuestions } = useQuestionStore();
+  const [questions, setQuestions] = useState<TQuestion[]>([]);
+  const [studentAnswers, setStudentAnswers] = useState<TStudentAnswer[]>([]);
+  const studentAnswersRef = useRef<TStudentAnswer[]>([]);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [examCompleted, setExamCompleted] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [exam, setExam] = useState<TExam>();
+  const { openModal, closeModal } = useModal();
+  const { caculateTestScore, startTest, activeTest } = useTestStore();
+  const activeTestRef = useRef(activeTest);
+  const timeLefRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
+    if (timeLeft < 1 && timerRef.current !== null) {
+      handleSubmitExam();
     }
+    timeLefRef.current = timeLeft;
+  }, [timeLeft]);
+
+  const handleSubmitAfterLoadPage = useCallback(async () => {
+    const sessionTestId = sessionStorage.getItem("testId");
+    const sessionAnswers = sessionStorage.getItem("answers");
+    if (!sessionTestId || !sessionAnswers) {
+      return false;
+    }
+    const cacheTestId = String(sessionTestId);
+    const cacheAnswers = JSON.parse(sessionAnswers) as TStudentAnswer[];
+    const answersMap = getAnswersMap(cacheAnswers);
+    await caculateTestScore(cacheTestId, answersMap);
+    router.push(`/result/${cacheTestId}`);
+    sessionStorage.clear();
+    return true;
   }, []);
 
   useEffect(() => {
-    if (itemExam && itemExam.examTime > 0) {
-      setTimeStamp(itemExam.examTime);
+    const handleBeforeunload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    const handleUnload = () => {
+      sessionStorage.setItem(
+        "answers",
+        JSON.stringify(studentAnswersRef.current)
+      );
+      sessionStorage.setItem("testId", activeTestRef.current?.id ?? "");
+    };
+    const handleCloseTab = (e: Event) => {
+      e.preventDefault()
+      handleUnload()
     }
-  }, [itemExam]);
-  
-  useEffect(() => {
-    if (timeStamp > 0) {
-      const interval = setInterval(() => {
-        setTimeStamp((prev) => Math.max(prev - 1, 0));
-      }, 1000);
-  
-      return () => clearInterval(interval);
-    }
-  }, [timeStamp]);
-  
+    window.addEventListener("beforeunload", handleBeforeunload);
+    window.addEventListener("unload", handleUnload);
+    window.addEventListener('close', handleBeforeunload)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeunload);
+      window.removeEventListener("unload", handleUnload);
+      window.removeEventListener("close", handleCloseTab);
+    };
+  }, [examCompleted]);
 
   useEffect(() => {
-    const getExam = async () => {
-      const resExam: ResponseExam = await ApiService.get("/exam/get",{ id: params.id });
-      const questions: ResponseQuestions = await ApiService.get("/question/gets",{ examId: params.id });
-      const answers: ResponseAnswers = await ApiService.get("/answer/gets",{ examId: params.id });
-      setItemExam(resExam.data)
-      const updatedQuestions = questions.data.questions.map((question) => ({
-        ...question,
-        answers: answers.data.answers.filter((answer) => answer.questionId === question.id),
-      }));
-      useExamStore.getState().setExam({
-        ...resExam.data,
-        questions: updatedQuestions,
+    studentAnswersRef.current = studentAnswers;
+  }, [studentAnswers]);
+
+  useEffect(() => {
+    activeTestRef.current = activeTest;
+  }, [activeTest]);
+
+  const startTimer = useCallback((duration: number) => {
+    setTimeLeft(duration);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          return 0;
+        }
+        return prev - 1;
       });
-      useExamStore.getState().setQuestions(updatedQuestions);
-      useExamStore.getState().setAnswers(answers.data.answers);
-      setQuestionAnswers(updatedQuestions);
+    }, 1000);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const isSubmitted = await handleSubmitAfterLoadPage();
+      if (isSubmitted) {
+        return;
+      }
+    })();
+    const initializeExam = async () => {
+      await detailExam(params.id);
+      await startTest(params.id);
+      await getQuestions(params.id);
+    };
+    initializeExam();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeTest) {
+      return;
     }
-    getExam()
-    
-  },[params.id])
-  
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("exam onSubmit: ", exam);
-  
+
+    if (activeTest.status !== "TakingATest") {
+      router.push("/dashboard");
+      return;
+    }
+  }, [activeTest]);
+
+  useEffect(() => {
+    const currentExam = exams.get(params.id);
+    if (currentExam?.examTime) {
+      setExam(currentExam);
+      const examDuration = currentExam.examTime;
+      startTimer(examDuration);
+    }
+  }, [exams.get(params.id)]);
+
+  useEffect(() => {
+    if(!storedQuestions[params.id]){
+      return
+    }
+    if (storedQuestions[params.id].length > 0) {
+      const availableAnswers = storedQuestions[params.id].map((question) => ({
+        questionId: question.id,
+        examId: params.id,
+        answer: question.type === "Essay" ? "" : null,
+        answerIds: [],
+      }));
+      setQuestions(storedQuestions[params.id]);
+      setStudentAnswers(availableAnswers);
+    }
+  }, [storedQuestions[params.id]]);
+
+  const handleAnswerChange = (questionIndex: number, answerId: string) => {
+    if (examCompleted) return;
+
+    setStudentAnswers((prev) => {
+      const newAnswers = [...prev];
+      newAnswers[questionIndex].answerIds = [answerId];
+      return newAnswers;
+    });
+  };
+
+  const handleEssayAnswer = (questionIndex: number, text: string) => {
+    if (examCompleted) return;
+
+    setStudentAnswers((prev) => {
+      const newAnswers = [...prev];
+      newAnswers[questionIndex].answer = text;
+      return newAnswers;
+    });
+  };
+
+  const getAnswersMap = useCallback((sas: TStudentAnswer[]) => {
+    const answersMap = {} as TAnswerMap;
+    sas.forEach((sa) => {
+      answersMap[sa.questionId] = sa.answer ? [sa.answer] : sa.answerIds;
+    });
+    return answersMap;
+  }, []);
+
+  const handleConfirmCancelTesting = async () => {
+    closeModal();
+    if (examCompleted) {
+      return;
+    }
+    const answersMap = getAnswersMap(studentAnswersRef.current);
+    if (!activeTestRef.current) {
+      toast.error("Không tìm thấy bài thi");
+      return;
+    }
+    const testId = activeTestRef.current.id;
     try {
-      // Step 1: Update Exam
-      const resExam: ResponseExam = await ApiService.patch("/exam/update", {
-        id: params.id,
-        topic: exam?.topic,
-        description: exam?.description,
-        status: exam?.status,
-        examTime: Number(exam?.examTime),
-      });
-  
-      const questionCount = questionAnswers.length - 1; // Store initial length to avoid mutation issues
-  
-      // Step 2: Process Questions and Answers
-      await Promise.all(
-        questions.map(async (q, idx) => {
-          const index = idx++
-          let questionId = q.id;
-  
-          if (q.id === "" && questionCount !== index) {
-            const createQues = await ApiService.post<ResponseQuestion>("/question/create", {
-              examId: params.id,
-              content: q.content,
-            });
-            questionId = createQues.data.id;
-          } else {
-            await ApiService.patch("/question/update", {
-              id: q.id,
-              content: q.content,
-            });
-          }
-  
-          // Step 3: Create/Update Answers
-          await Promise.all(
-            q.answers.map(async (a, i) => {
-              if (a.id === "" && questionCount !== index) {
-                await ApiService.post("/answer/create", {
-                  examId: params.id,
-                  content: a.content,
-                  questionId,
-                  isCorrect: a.isCorrect,
-                });
-              } else {
-                await ApiService.patch("/answer/update", {
-                  id: a.id,
-                  content: a.content,
-                  isCorrect: a.isCorrect,
-                });
-              }
-            })
-          );
-        })
-      );
-  
-      createStatusCreateUpdate('Update successfully!',true)
-      router.back()
-      clearExam();
-      clearQuestions();
-      clearAnswers();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message);
-      console.error("API Error:", error);
+      const success = await caculateTestScore(testId, answersMap);
+
+      if (success) {
+        toast.success("Đã lưu kết quả và rời phòng thi");
+        router.push(`/result/${testId}`);
+        setExamCompleted(true);
+      } else {
+        toast.error("Lưu kết quả thất bại");
+      }
+    } catch (error) {
+      toast.error("Có lỗi xảy ra khi xử lý kết quả");
     }
   };
-  
-  
+
+  const handleCancelTesting = useCallback(() => {
+    openModal(
+      ConfirmCancelTesting,
+      {
+        title: "Rời phòng thi",
+        message: "Bạn có chắc chắn muốn rời phòng thi không?",
+        onConfirm: handleConfirmCancelTesting,
+        confirmText: "Rời",
+        cancelText: "Tiếp tục thi",
+      },
+      { size: "sm" }
+    );
+  }, []);
+
+  const handleSubmitExam = async () => {
+    if (isSubmitting || examCompleted) return;
+    setIsSubmitting(true);
+    const answersMap = getAnswersMap(studentAnswersRef.current);
+
+    if (!activeTestRef.current) {
+      setIsSubmitting(false);
+      return;
+    }
+    const testId = activeTestRef.current.id;
+
+    const r = await caculateTestScore(testId, answersMap);
+    if (!r) {
+      toast.error("Nộp bài thất bại!");
+      setIsSubmitting(false);
+      return;
+    }
+    setExamCompleted(true);
+    toast.success("Nộp bài thành công!");
+    setTimeout(() => {
+      router.push(`/result/${testId}`);
+      setIsSubmitting(false);
+    }, 2000);
+  };
 
   return (
-    <form onSubmit={onSubmit}>
-      <div className="flex justify-between items-center h-14 px-5 shadow-md mb-5">
-        <div>
-          <Image src={logo} alt="Logo" width={wh_logo_medium} height={wh_logo_medium} className="w-12 h-12 mb-4" />
-        </div>
-        <div className="px-9">
-          <button className="bg-green-500 w-36 h-14 rounded-lg" type="submit">Submit</button>
-        </div>
-      </div>
-      <div className="w-full flex flex-col justify-center items-center ">
-        <CardExam className="lg:w-1/2 md:w-1/3 sm:w-1/3 flex flex-col justify-center items-center">
-          <div className="grid w-full md:grid-cols-2 sm:grid-cols-1 justify-between ">
-            <div className="">
-              <h3>{itemExam?.description}</h3>
-              <h1>{itemExam?.topic}</h1>
-            </div>
-            <div className="flex flex-col justify-center items-end">
-              <h1>Thời gian làm bài</h1>
-              <h3 className={`${timeStamp <= 30 && "font-bold text-3xl text-red-600 "}`}>
-                {formatTime(timeStamp)}
-              </h3>
-            </div>
+    <div className="max-w-4xl mx-auto p-4">
+      {exam ? (
+        <CardExam className="bg-white shadow-lg rounded-xl overflow-hidden">
+          <TestExamHeader exam={exam} timeLeft={timeLeft} />
+          <div className="p-6 space-y-8">
+            {questions.map((question, i) => (
+              <TestQuestion
+                key={i}
+                examCompleted={examCompleted}
+                incrementId={i}
+                onAnswerChange={handleAnswerChange}
+                onEssayAnswerChange={handleEssayAnswer}
+                studentAnswers={studentAnswers}
+                val={question}
+              />
+            ))}
           </div>
 
-          {
-            questions && 
-            <QuestionAnswersClient 
-              questions={questions}
+          {/* Control Panel */}
+          <div className="bg-gray-50 p-4  border-t flex justify-between">
+            <Button
+              customStyle="bg-red-400 cursor-pointer rounded-sm hover:bg-red-600 px-6 py-3"
+              onClick={handleCancelTesting}
+              text="Rời phòng thi"
+              icon={<XCircleIcon className="w-5 h-5 mr-2" />}
             />
-          }
+            <Button
+              text={examCompleted ? "Đã nộp" : "Nộp bài"}
+              customStyle={`bg-green-400 cursor-pointer rounded-sm hover:bg-green-600 px-8 py-3 transition-all
+          ${examCompleted && "opacity-50 cursor-not-allowed"}`}
+              onClick={handleSubmitExam}
+              disabled={isSubmitting || examCompleted}
+              loading={isSubmitting}
+            />
+          </div>
         </CardExam>
-      </div>
-    </form>
+      ) : (
+        <div className="text-center py-12">
+          <Spinner />
+          <p className="mt-4 text-gray-600">Đang tải bài thi...</p>
+        </div>
+      )}
+    </div>
   );
 }
 
-export default page
+export default React.memo(StudentExamPage);

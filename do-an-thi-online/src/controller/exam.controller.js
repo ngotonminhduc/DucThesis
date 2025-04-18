@@ -1,13 +1,12 @@
 import { Exam } from "../models/Exam.js";
-import moment from "moment";
-import { checkExamActive } from "../utils/checkExam.js";
 import { checkUserAdmin } from "../utils/checkUserAdmin.js";
+import { getAuthUser } from "../utils/getAuthUser.js";
 
 export const createExam = async (req, res) => {
   const { topic, description, examTime, status } = req.body;
 
-  if (!topic && !description && !examTime) {
-    throw new Error("Invalid Params");
+  if (!topic || !description || !examTime) {
+    throw new Error("Tham số không hợp lệ");
   }
 
   const exam = await Exam.create({
@@ -18,7 +17,7 @@ export const createExam = async (req, res) => {
   }).then((r) => r.toJSON());
 
   if (!exam) {
-    throw new Error("Create exam again!");
+    throw new Error("Hãy tạo lại bài kiểm tra!");
   }
 
   res.status(200).json({
@@ -32,15 +31,11 @@ export const createExam = async (req, res) => {
 export const updateExam = async (req, res) => {
   const { id, topic, description, examTime, status } = req.body;
 
-  if (!id) {
-    throw new Error("Invalid Params Id");
+  if (!id || !topic || !description || !examTime) {
+    throw new Error("Tham số không hợp lệ");
   }
-  // const check = checkExamActive(id)
-  // if (check) {
-  //   throw new Error('Can not update exam!')
-  // }
 
-  await Exam.update(
+  const n = await Exam.update(
     {
       topic,
       description,
@@ -50,33 +45,35 @@ export const updateExam = async (req, res) => {
     { where: { id } }
   ).then((r) => r[0]);
 
+  if (n < 1) {
+    throw new Error("Đề thi không tồn tại");
+  }
+
+  const exam = await Exam.findOne({ where: { id } }).then((r) => r?.toJSON());
+
   res.status(200).json({
     success: true,
-    data: {},
+    data: { ...exam },
   });
 };
 
 export const getExams = async (req, res) => {
-  const id = req["user"]?.id;
-  const isAdmin = await checkUserAdmin(id);
-
+  const user = getAuthUser(req);
   let exams;
-  if (isAdmin) {
+  if (user.isAdmin) {
     exams = await Exam.findAll({
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "desc"]],
     }).then((arr) => arr.map((r) => r.toJSON()));
   } else {
     exams = await Exam.findAll({
       where: { status: "active" },
-      order: [["createdAt", "DESC"]],
+      order: [["createdAt", "desc"]],
     }).then((arr) => arr.map((r) => r.toJSON()));
   }
 
   res.status(200).json({
     success: true,
-    data: {
-      exams,
-    },
+    data: exams,
   });
 };
 
@@ -84,16 +81,15 @@ export const getExam = async (req, res) => {
   const { id } = req.query;
 
   if (!id) {
-    return res.status(400).json({ success: false, message: "Invalid Params" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Tham số không hợp lệ" });
   }
 
-  const exams = await Exam.findOne({ where: { id } }).then((r) => r?.toJSON());
-
+  const exam = await Exam.findOne({ where: { id } }).then((r) => r?.toJSON());
   res.status(200).json({
     success: true,
-    data: {
-      ...exams,
-    },
+    data: { ...exam },
   });
 };
 
@@ -101,7 +97,7 @@ export const deleteExam = async (req, res) => {
   const { id } = req.body;
 
   if (!id) {
-    throw new Error("Invalid Params");
+    throw new Error("Tham số không hợp lệ");
   }
 
   const existExam = await Exam.findOne({ where: { id } }).then((r) =>
@@ -109,7 +105,7 @@ export const deleteExam = async (req, res) => {
   );
 
   if (!existExam) {
-    throw new Error("Can not delete exam!");
+    throw new Error("Không thể xóa bài thi!");
   }
 
   await Exam.destroy({ where: { id } });

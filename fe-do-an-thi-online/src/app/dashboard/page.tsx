@@ -1,93 +1,116 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/header";
 import { BottomRightButton } from "@/components/button/BottomRightButton";
-import ApiService from "@/utils/api";
-import { ItemExam, ListExam, ResponseExams, Status } from "@/utils/type";
-import { Modal, ModalButton } from "@/components/modal";
+import { CardHome } from "@/components/card/CardHome";
 import { toast } from "react-toastify";
-import { CardHomeClient } from "@/components/card/CardHomeClient";
+import { useExamStore } from "@/store/exam-store";
+import { TExam } from "@/services/examService";
+import { useModal } from "@/hooks/useModal";
+import EmptyExamState from "@/components/exam/EmtyExamState";
+import ConfirmTest from "@/components/exam/Dialog/ConfirmTest";
+import { useTestStore } from "@/store/test-store";
+
+type TTestMap = {
+  [examId: string]: string[];
+};
 
 export default function Dashboard() {
   const router = useRouter();
-  const [ exams, setExams ] = useState<ListExam>([]);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [removeItem, setRemoveItem] = useState<string>('');
+  const [exams, setExams] = useState<TExam[]>([]);
+  const [testsMap, setTtestsMap] = useState<TTestMap>({});
+  const { exams: storedExams, getExams } = useExamStore();
+  const { openModal, closeModal } = useModal();
+  const { createTest, getTests, tests, error, clearError } = useTestStore();
 
   useEffect(() => {
-    const getExam = async () => {
-      const resExam: ResponseExams = await ApiService.get("/exam/gets");
-      setExams(resExam.data.exams)
+    (async () => {
+      await getExams();
+      await getTests();
+    })();
+  }, []);
+
+  useEffect(() => {
+    const d = {} as TTestMap;
+    tests.forEach((t) => {
+      if (!d[t.examId]) {
+        d[t.examId] = [t.id];
+        return;
+      }
+      d[t.examId].push(t.id);
+    });
+    setTtestsMap(d);
+  }, [tests]);
+
+  useEffect(() => {
+    const d = [] as TExam[];
+    storedExams.forEach((e) => {
+      d.push(e);
+    });
+    setExams(d);
+  }, [storedExams.size]);
+
+  useEffect(() => {
+    if (!error) {
+      return;
     }
-    getExam()
-  },[])
+    toast.error(error);
+    clearError();
+  }, [error]);
 
-  const onClickItem = (id: string) => {
-    router.push(`/exam/${id}`)
-  }
+  const handleJoinTest = async (examId: string) => {
+    closeModal();
+    const t = await createTest(examId);
+    if (!t) {
+      return;
+    }
+    router.push(`/exam/${examId}`);
+  };
 
-  const onRemoveItem = async (id: string) => {
-    setRemoveItem(id)
-    setIsOpen(true)
-  }
-
-  const buttons: ModalButton[] = [
-    {
-      text: 'Cancel',
-      onClick: () => setIsOpen(false),
-    },
-    {
-      text: 'Agree',
-      onClick: async () => {
-        try {
-          const deleteExam:any = await ApiService.post("/exam/delete",{id: removeItem});
-          const deleteQuestion:any = await ApiService.post("/question/delete",{examId: removeItem});
-          const deleteAnswer:any = await ApiService.post("/answer/delete", {examId: removeItem});
-          if (deleteExam.success && deleteQuestion.success && deleteAnswer.success) {
-            console.log('asfsdfsf');
-            toast.success("Exam created successfully!");
-            setTimeout(() => {
-              location.reload()
-            }, 5900);
-            setIsOpen(false);
-          }
-        } catch (error: any) {
-          setIsOpen(false);
-          toast.error(error.response?.data?.message || "Error creating exam");
-        }
+  const handleRedirectExamDetail = (exam: TExam) => {
+    openModal(
+      ConfirmTest,
+      {
+        title: `Xác nhận thi môn ${exam.topic}`,
+        message: "Thao tác này không thể hoàn tất, bạn có muốn thi không?",
+        onConfirm: () => handleJoinTest(exam.id),
+        confirmText: "Bắt đầu",
+        cancelText: "Hủy bỏ",
       },
-    },
-  ]
+      { size: "md" }
+    );
+  };
 
   return (
     <div className="flex flex-col items-center h-screen pt-[70px] overflow-y-auto ">
-      <Header/>
-      <div className="flex flex-col w-full items-center mt-4 flex-1 ">
-        <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-4 bg lg:w-9/12 pb-3 overflow-x-hidden ">
-        {/* flex-grow */}
-          {exams.map((e, index) => (
-            <CardHomeClient
-              onClick={() => onClickItem(e ? e.id : '')}
-              key={index}
-              examId={e ? e.id : ''}
-              examTime={ e ? e.examTime : 0}
-              topic={e ? e.topic : ''}
-              status={e ? e.status : 'inactive'}
-              description={e ? e.description : ''}
-            />
-          ))}
+      <Header />
+      {exams.length ? (
+        <div className="flex flex-col w-full items-center mt-4 flex-1 ">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg lg:w-9/12 pb-3 overflow-x-hidden ">
+            {/* flex-grow */}
+            {exams.map((e, index) => (
+              <CardHome
+                examId={e.id}
+                isCompleted={!!testsMap[e.id]?.length}
+                onClick={() => handleRedirectExamDetail(e)}
+                key={index}
+                examTime={e ? e.examTime : 0}
+                topic={e ? e.topic : ""}
+                status={e ? e.status : "inactive"}
+                description={e ? e.description : ""}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      {/* <Modal
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        buttons={buttons}
-        exams={exams}
-      >
-        <h1>Bạn thật sự muốn xóa không?</h1>
-      </Modal> */}
-      {/* <BottomRightButton onClick={()=>(router.push('/admin/exam'))}/> */}
+      ) : (
+        <EmptyExamState onCreateExam={() => router.push("/admin/exam")} />
+      )}
+      {exams.length ? (
+        <BottomRightButton onClick={() => router.push("/admin/exam")} />
+      ) : (
+        <></>
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 export function useStore(): StoreType {
   const store = useContext(StoreContext);
   if (!store) {
-    throw new Error("useStore must be used within a StoreProvider");
+    throw new Error("useStore phải được sử dụng trong StoreProvider");
   }
   return store;
 }

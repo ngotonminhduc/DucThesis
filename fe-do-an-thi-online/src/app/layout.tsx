@@ -4,6 +4,8 @@ import "./globals.css";
 
 import { StoreProvider } from "@/store/StoreProvider";
 import { ToastContainer } from "react-toastify";
+import AuthProvider from "@/components/auth/AuthProvider";
+import { ModalProvider } from "@/components/modal/ModalProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,12 +27,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <StoreProvider>{children}</StoreProvider>
-        <ToastContainer position="top-right"
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <StoreProvider>
+          <ModalProvider>
+            <AuthProvider>{children}</AuthProvider>
+          </ModalProvider>
+        </StoreProvider>
+        <ToastContainer
+          position="top-right"
           autoClose={5000}
           hideProgressBar={false}
           newestOnTop={false}
@@ -40,7 +48,7 @@ export default function RootLayout({
           draggable
           pauseOnHover
           theme="light"
-          />
+        />
       </body>
     </html>
   );

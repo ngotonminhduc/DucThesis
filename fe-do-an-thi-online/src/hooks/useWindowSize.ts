@@ -1,4 +1,3 @@
-// hooks/useWindowSize.ts
 import { useState, useEffect } from 'react';
 
 export const useWindowSize = () => {
@@ -15,10 +14,8 @@ export const useWindowSize = () => {
       });
     };
 
-    // Gọi handleResize một lần khi component mount
     handleResize();
 
-    // Lắng nghe sự kiện thay đổi kích thước cửa sổ
     window.addEventListener('resize', handleResize);
 
     // Dọn dẹp sự kiện khi component unmount

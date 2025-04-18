@@ -1,7 +1,6 @@
 // components/UserDropdown.tsx
 import { FC, useState, useEffect, useRef } from 'react';
 import { User } from 'lucide-react'; // Icon user từ lucide-react
-import { i } from 'framer-motion/client';
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from 'next/navigation';
 
@@ -43,6 +42,9 @@ const UserDropdown: FC = () => {
   const handleEditProfile = () => {
     console.log('Edit profile');
   };
+  const handleListTest = () => {
+    router.push('/result')
+  };
 
   const handleLogout = () => {
     logout()
@@ -62,15 +64,23 @@ const UserDropdown: FC = () => {
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 w-48 bg-white shadow-md rounded-md border border-gray-200"
+          className="absolute right-0 mt-2 w-28 bg-white shadow-md rounded-md border border-gray-200"
         >
           <ul className="py-2">
+            <li>
+              <button
+                onClick={handleListTest}
+                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                Lịch sử thi
+              </button>
+            </li>
             <li>
               <button
                 onClick={handleEditProfile}
                 className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
-                Edit Profile
+                Cá nhân
               </button>
             </li>
             <li>

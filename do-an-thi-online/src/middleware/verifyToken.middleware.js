@@ -2,8 +2,9 @@ import express from "express";
 import cookie from "cookie";
 import { decodeToken } from "../utils/jwt.js";
 import { configJwt } from "../config/config.js";
+import { User } from "../models/User.js";
 /** @type {express.RequestHandler} */
-export const verifyTokenMiddleware = (req, res, next) => {
+export const verifyTokenMiddleware = async (req, res, next) => {
   const h = req.headers;
   const c = cookie.parse(h.cookie || "");
   const authCookieKey = configJwt["authCookiePrefix"];
@@ -17,13 +18,18 @@ export const verifyTokenMiddleware = (req, res, next) => {
   if (a && a.startsWith(authHeaderPrefix)) {
     data = decodeToken(a.replace(authHeaderPrefix, ""));
   }
+  const err = () => new Error("Xác thực thất bại");
 
   if (!data) {
-    throw new Error("Invalid token");
+    throw err();
   }
-  req["user"] = {
-    id: data.id,
-    email: data.email,
-  };
+  //check user
+  const user = await User.findOne({ where: { id: data.id } }).then((r) =>
+    r?.toJSON()
+  );
+  if (!user) {
+    throw err();
+  }
+  req["user"] = user;
   next();
 };
