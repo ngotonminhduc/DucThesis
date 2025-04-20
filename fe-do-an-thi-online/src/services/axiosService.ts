@@ -1,5 +1,5 @@
 import { qsStableStringify } from "@/utils/qs";
-import axios, { Axios, AxiosInstance } from "axios";
+import axios, { AxiosInstance } from "axios";
 
 type SuccessResponse<T> = {
   success: true;

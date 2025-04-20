@@ -2,7 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import { connectDatabase } from "./config/initDB.js";
-import { login, me, register } from "./controller/auth.controller.js";
+import { login, loginWithSocial, me, register } from "./controller/auth.controller.js";
 import "express-async-errors";
 import { verifyTokenMiddleware } from "./middleware/verifyToken.middleware.js";
 import {
@@ -63,6 +63,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // AUTH
 app.post("/login", login);
+app.post("/social-login", loginWithSocial);
 app.post("/register", register);
 app.get("/me", verifyTokenMiddleware, me);
 

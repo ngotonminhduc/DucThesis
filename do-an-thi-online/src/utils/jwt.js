@@ -1,6 +1,12 @@
   import jwt from "jsonwebtoken";
   import { configJwt } from "../config/config.js";
   const { exp, jwtSecret } = configJwt;
+  
+  /**
+   * 
+   * @param {*} payload 
+   * @returns {string | undefined}
+   */
   export const encodeToken = (payload) => {
     try {
       return jwt.sign(

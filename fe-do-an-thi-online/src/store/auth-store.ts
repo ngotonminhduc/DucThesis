@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { authService, TRegister, TUser } from "@/services/authService";
+import {
+  authService,
+  TRegister,
+  TSocialLoginType,
+  TUser,
+} from "@/services/authService";
 import { cookieStorage } from "@/utils/cookie";
+import { googleClientId } from "@/utils/constants";
 
 export type AuthType = "default" | "login" | "register";
 
@@ -14,6 +20,7 @@ interface AuthState {
   error: string | null;
 
   login: (email: string, password: string) => Promise<void>;
+  loginWithSocial: (type: TSocialLoginType) => Promise<void>;
   logout: () => void;
   register: (data: TRegister) => Promise<void>;
   checkAuthStatus: () => Promise<void>;
@@ -73,7 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isLoading: false,
       isAuthenticated: true,
       type: "default",
-      token
+      token,
     });
   },
   logout: () => {
@@ -83,6 +90,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: null,
       token: null,
     });
+  },
+  loginWithSocial: async (type) => {
+    if (window) {
+      const handleSuccess = async (accessToken: string) => {
+        const r = await authService.loginWithSocial(accessToken, type);
+        if (r.message) {
+          set({
+            isLoading: false,
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            error: r.message,
+            type: "register",
+          });
+          return;
+        }
+        const { token } = r.data!;
+        cookieStorage.setItem(authService.authCookieCname, token);
+        set({
+          isLoading: false,
+          isAuthenticated: true,
+          token,
+          type: "default",
+        });
+      };
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: googleClientId ?? "",
+        scope: "email profile",
+        callback: (res) => {
+          handleSuccess(res.access_token);
+        },
+        error_callback: (err) => {
+          set({
+            error: err.message,
+            isLoading: false,
+            isAuthenticated: false,
+            user: null,
+            token: null,
+            type: "login",
+          });
+        },
+      });
+      client.requestAccessToken();
+    } else {
+      set({
+        error: "Fail login with google",
+        isLoading: false,
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        type: "login",
+      });
+    }
   },
   checkAuthStatus: async () => {
     const { token } = get();

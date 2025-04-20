@@ -8,7 +8,8 @@ export type TUser = {
   isAdmin: boolean;
 } & TBaseResponseData;
 
-export type TRegister = Pick<TUser, 'name' | 'email'> & {password: string}
+export type TRegister = Pick<TUser, "name" | "email"> & { password: string };
+export type TSocialLoginType = "google" | "facebook";
 
 export class AuthService {
   private static instance: AuthService;
@@ -54,8 +55,15 @@ export class AuthService {
     });
   };
 
+  loginWithSocial = async (accessToken: string, type: TSocialLoginType) => {
+    return this.api.post<{ token: string }>("/social-login", {
+      accessToken,
+      type,
+    });
+  };
+
   register = async ({ email, name, password }: TRegister) => {
-    return this.api.post<{token: string}>("/register", {
+    return this.api.post<{ token: string }>("/register", {
       name,
       email,
       password,

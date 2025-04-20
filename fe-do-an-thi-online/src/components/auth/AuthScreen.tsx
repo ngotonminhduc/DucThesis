@@ -1,19 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/legacy/image";
 import { facebook, google, logo, thi, thi_onl } from "../../../public";
 import AuthForm from "./AuthForm";
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { wh_logo, wh_logo_google } from "@/utils/constants";
-import { AuthType } from "@/store/auth-store";
+import { AuthType, useAuthStore } from "@/store/auth-store";
+import { TSocialLoginType } from "@/services/authService";
 
 interface AuthScreenProps {
-  type: AuthType
+  type: AuthType;
 }
 
 export default function AuthScreen({ type }: AuthScreenProps) {
   const [showForm, setShowForm] = useState(type !== "default");
   const [haveAccount, setHaveAccount] = useState(type === "login");
   const { height, width } = useWindowSize();
+  const { loginWithSocial } = useAuthStore();
+
+  const handleGoogleLogin = async (type: TSocialLoginType) => {
+    await loginWithSocial(type);
+  };
 
   return (
     <div className="flex h-full">
@@ -47,7 +53,10 @@ export default function AuthScreen({ type }: AuthScreenProps) {
 
           {/* Buttons */}
           <div className="mt-6 w-3/4">
-            <button className="w-full bg-white border border-gray-300 rounded-lg py-2 flex items-center justify-center mb-3">
+            <button
+              onClick={() => handleGoogleLogin('google')}
+              className="w-full bg-white border border-gray-300 rounded-lg py-2 flex items-center justify-center mb-3"
+            >
               <div className="flex justify-between w-1/3 items-center">
                 <Image
                   src={google}
@@ -55,7 +64,7 @@ export default function AuthScreen({ type }: AuthScreenProps) {
                   height={wh_logo_google}
                   className="w-5 h-5 mr-2"
                 />
-                Continue with Google
+                Tiếp tục với Google
               </div>
             </button>
             <button className="w-full bg-white border border-gray-300 rounded-lg py-2 flex items-center justify-center mb-3">
@@ -66,7 +75,7 @@ export default function AuthScreen({ type }: AuthScreenProps) {
                   height={wh_logo_google}
                   className="w-5 h-5 mr-2"
                 />
-                Continue with Facebook
+                Tiếp tục với Facebook
               </div>
             </button>
             <div className="text-gray-400 text-center my-2">Or</div>
@@ -74,7 +83,7 @@ export default function AuthScreen({ type }: AuthScreenProps) {
               onClick={() => setShowForm(true)}
               className="w-full bg-black text-white rounded-lg py-2"
             >
-              Continue with Email
+              Tiếp tục với Email
             </button>
           </div>
         </div>
