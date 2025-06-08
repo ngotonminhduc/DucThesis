@@ -45,7 +45,7 @@ export type Exam = {
   }[];
 };
 
-export type TAddExam = Exam
+export type TAddExam = Exam;
 
 export type Answer = {
   id: string;
@@ -205,11 +205,17 @@ export type ResponseUser = {
   };
 };
 
+export type Role = {
+  id: string;
+  name: string;
+  description: string;
+};
+
 export type User = {
   id: string;
   name: string;
   email: string;
-  isAdmin: boolean;
+  roles: Role[];
   createdAt: string;
 };
 

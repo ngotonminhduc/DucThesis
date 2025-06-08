@@ -1,12 +1,12 @@
 import { ulid } from "ulidx";
 import { s2g } from "../config/database.js";
-import { BaseModle } from "./Base.js";
+import { BaseModel } from "./Base.js";
 import { DataTypes, Sequelize } from "sequelize";
 
 export const Answer = s2g.define(
   "Answer",
   {
-    ...BaseModle,
+    ...BaseModel,
     examId: {
       type: DataTypes.STRING,
     },
@@ -19,6 +19,9 @@ export const Answer = s2g.define(
     isCorrect: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
+    },
+    subjectAnswerId: {
+      type: DataTypes.STRING,
     },
     idx: {
       type: DataTypes.INTEGER,

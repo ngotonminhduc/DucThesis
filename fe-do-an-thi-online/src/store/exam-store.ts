@@ -1,9 +1,5 @@
 import { create } from "zustand";
-import { ItemAnswer, Exam, Questions, TypeQues } from "@/utils/type";
-import { persist } from "zustand/middleware";
 import { examService, TCreateExam, TExam } from "@/services/examService";
-import { data } from "framer-motion/client";
-
 type Undefined<T> = T | undefined;
 
 interface ExamState {

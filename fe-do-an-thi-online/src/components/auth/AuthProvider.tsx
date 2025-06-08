@@ -11,6 +11,15 @@ interface AuthProviderProps {
 
 const publicRoutes = ["/auth"];
 
+/**
+ * Kiểm tra xem user có role được chỉ định không
+ * @param roles - Danh sách roles của user
+ * @param roleName - Tên role cần kiểm tra
+ */
+const hasRole = (roles: any[] = [], roleName: string): boolean => {
+  return roles.some((role) => role.name === roleName);
+};
+
 const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const {
     isAuthenticated,
@@ -42,20 +51,23 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
     const isUnActionAuth = !isAuthenticated && token;
-    if(isUnActionAuth){
-      return
+    if (isUnActionAuth) {
+      return;
     }
     const isAuth = isAuthenticated && !!token;
     // Check if current route is public
     const isPublicRoute = publicRoutes.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`)
     );
+    const isRootRoute = pathname === "/";
     if (!isAuth && !isPublicRoute) {
       // Not authenticated and trying to access protected route
       router.push("/auth");
-    } else if (isAuth && isPublicRoute) {
-      if (user?.isAdmin) {
+    } else if (isAuth && (isPublicRoute || isRootRoute)) {
+      if (user?.roles && hasRole(user.roles, "ADMIN")) {
         router.push("/admin/dashboard");
+      } else if (user?.roles && hasRole(user.roles, "EDITOR")) {
+        router.push("/editor/dashboard");
       } else {
         router.push("/dashboard");
       }

@@ -15,11 +15,12 @@ export default function CreateExamPage() {
   const router = useRouter();
   const [exam, setExam] = useState<TExam>();
   const { error, createExam, isLoading, clearError } = useExamStore();
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
 
   useEffect(() => {
     if (error) {
       toast.error(error);
-      clearError()
+      clearError();
     }
   }, [error]);
 
@@ -33,10 +34,21 @@ export default function CreateExamPage() {
     [exam]
   );
 
+  useEffect(() => {
+    if(selectedSubjectId && exam){
+      setExam({
+        ...exam,
+        subjectId: selectedSubjectId,
+      })
+    }
+  }, [selectedSubjectId])
+
   const handleContinue = async () => {
     if (!canNext || !exam) {
       return;
     }
+    console.log(exam);
+
     const d = await createExam(exam);
     if (!d) {
       return;
@@ -44,9 +56,21 @@ export default function CreateExamPage() {
     router.push(`/admin/exam/${d.id}`);
   };
 
+  const handleSubjectSelect = (subjectId: string) => {
+    if (!exam) {
+      return;
+    }
+    setSelectedSubjectId(subjectId)
+  };
+
   return (
     <CardExam className="lg:w-1/2 md:w-1/3 sm:w-1/3 flex flex-col justify-center items-center ">
-      <ExamHeader onUpdateItem={handleUpdateExamData} />
+      <ExamHeader
+        onUpdateItem={handleUpdateExamData}
+        disabledStatus={true}
+        onSubjectSelect={handleSubjectSelect}
+        selectedSubjectId={selectedSubjectId}
+      />
       {!isLoading ? (
         <Button
           onClick={handleContinue}

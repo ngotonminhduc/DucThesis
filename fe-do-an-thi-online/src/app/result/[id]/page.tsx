@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CardExam } from "@/components/card/CardExam";
 import { Button } from "@/components/button/Button";
@@ -78,7 +78,11 @@ function ResultPage() {
     <div className="min-h-screen bg-slate-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         <CardExam className="bg-white shadow-xl rounded-xl overflow-hidden border border-slate-200">
-          <TestExamHeader exam={test.exam} timeLeft={getTimeLeft()} />
+          <TestExamHeader
+            code={test.code}
+            exam={test.exam}
+            timeLeft={getTimeLeft()}
+          />
 
           <ResultSummary test={test} />
 

@@ -3,6 +3,7 @@ import cookie from "cookie";
 import { decodeToken } from "../utils/jwt.js";
 import { configJwt } from "../config/config.js";
 import { User } from "../models/User.js";
+import { Role } from "../models/Role.js";
 /** @type {express.RequestHandler} */
 export const verifyTokenMiddleware = async (req, res, next) => {
   const h = req.headers;
@@ -24,9 +25,16 @@ export const verifyTokenMiddleware = async (req, res, next) => {
     throw err();
   }
   //check user
-  const user = await User.findOne({ where: { id: data.id } }).then((r) =>
-    r?.toJSON()
-  );
+  const user = await User.findOne({
+    where: { id: data.id },
+    include: {
+      model: Role,
+      as: "roles",
+      through: {
+        attributes: [],
+      },
+    },
+  }).then((r) => r?.toJSON());
   if (!user) {
     throw err();
   }

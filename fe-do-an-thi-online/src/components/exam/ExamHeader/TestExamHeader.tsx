@@ -6,14 +6,15 @@ import React from "react";
 interface TestExamHeaderProps {
   exam?: TExam;
   timeLeft?: number;
+  code: string
 }
 
-const TestExamHeader: React.FC<TestExamHeaderProps> = ({ exam, timeLeft }) => {
+const TestExamHeader: React.FC<TestExamHeaderProps> = ({ exam, timeLeft, code }) => {
   return (
     <div className="bg-slate-800 text-white p-6 border-b-4 border-indigo-500 shadow-lg">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-1 text-indigo-100">
-          {exam?.topic ?? ""}
+          Mã đề {code ?? ""}
         </h1>
         <p className="text-base text-slate-300 mb-6">
           {exam?.description ?? ""}

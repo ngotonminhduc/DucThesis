@@ -2,7 +2,12 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import { connectDatabase } from "./config/initDB.js";
-import { login, loginWithSocial, me, register } from "./controller/auth.controller.js";
+import {
+  login,
+  loginWithSocial,
+  me,
+  register,
+} from "./controller/auth.controller.js";
 import "express-async-errors";
 import { verifyTokenMiddleware } from "./middleware/verifyToken.middleware.js";
 import {
@@ -12,7 +17,7 @@ import {
   getExams,
   updateExam,
 } from "./controller/exam.controller.js";
-import { authorizeSystemMiddleware } from "./middleware/authorizeSystem.middleware.js";
+import { authorizeRole } from "./middleware/authorizeRole.middleware.js";
 import {
   createQuestion,
   createQuestions,
@@ -38,7 +43,32 @@ import {
   getTests,
 } from "./controller/test.controller.js";
 import { configdb } from "./config/config.js";
-import { seedAdmin } from "./seed/index.js";
+import {
+  migrateUsersToRoles,
+  seedRoles,
+  seedSubjects,
+  seedUsers,
+} from "./seed/index.js";
+
+import { getSubject, getSubjects } from "./controller/subject.controller.js";
+
+import {
+  createSubjectQuestion,
+  createSubjectQuestions,
+  deleteAllSubjectQuestions,
+  getSubjectQuestions,
+} from "./controller/subject-question.controller.js";
+import { RoleName } from "./utils/type.js";
+import {
+  createSubjectAnswers,
+  deleteAllSubjectAnswers,
+  getSubjectAnswers,
+} from "./controller/subject-answer.controller.js";
+import {
+  createTags,
+  deleteAllTags,
+  getTag,
+} from "./controller/tag.controller.js";
 
 process.on("uncaughtException", (err) => {
   console.error(err);
@@ -71,13 +101,14 @@ app.get("/me", verifyTokenMiddleware, me);
 app.post(
   "/exam/create",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   createExam
 );
+
 app.post(
   "/exam/update",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   updateExam
 );
 
@@ -92,7 +123,7 @@ app.get("/exam/get", verifyTokenMiddleware, getExam);
 app.post(
   "/exam/delete",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   deleteExam
 );
 
@@ -100,7 +131,7 @@ app.post(
 app.post(
   "/question/create",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   createQuestion
 );
 
@@ -108,14 +139,14 @@ app.post(
 app.post(
   "/question/create-many",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   createQuestions
 );
 
 app.post(
   "/question/update",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   updateQuestion
 );
 app.get("/question/gets", verifyTokenMiddleware, getQuestions);
@@ -123,14 +154,14 @@ app.get("/question/gets", verifyTokenMiddleware, getQuestions);
 app.post(
   "/question/delete",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   deleteQuestion
 );
 
 app.post(
   "/question/delete-all",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   deleteAllQuestions
 );
 
@@ -138,21 +169,21 @@ app.post(
 app.post(
   "/answer/create",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   createAnswer
 );
 
 app.post(
   "/answer/create-many",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   createAnswers
 );
 
 app.post(
   "/answer/update",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   updateAnswer
 );
 app.get("/answer/gets", verifyTokenMiddleware, getAnswers);
@@ -160,24 +191,120 @@ app.get("/answer/gets", verifyTokenMiddleware, getAnswers);
 app.post(
   "/answer/delete",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   deleteAnswer
 );
 
 app.post(
   "/answer/delete-all",
   verifyTokenMiddleware,
-  authorizeSystemMiddleware,
+  authorizeRole(RoleName.ADMIN),
   deleteAllAnswers
 );
 
+//SUBJECT
+app.get(
+  "/subject/gets",
+  verifyTokenMiddleware,
+  authorizeRole([RoleName.EDITOR, RoleName.ADMIN]),
+  getSubjects
+);
+
+app.get(
+  "/subject/get",
+  verifyTokenMiddleware,
+  authorizeRole([RoleName.EDITOR, RoleName.ADMIN]),
+  getSubject
+);
+
+//SUBJECT QUESTION
+
+app.post(
+  "/subject-question/create",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  createSubjectQuestion
+);
+
+app.post(
+  "/subject-question/create-many",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  createSubjectQuestions
+);
+
+app.get(
+  "/subject-question/gets",
+  verifyTokenMiddleware,
+  authorizeRole([RoleName.EDITOR, RoleName.ADMIN]),
+  getSubjectQuestions
+);
+
+app.post(
+  "/subject-question/delete-all",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  deleteAllSubjectQuestions
+);
+
+//SUBJECT ANSWER
+app.post(
+  "/subject-answer/create-many",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  createSubjectAnswers
+);
+
+app.post(
+  "/subject-answer/create",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  createSubjectAnswers
+);
+
+app.get(
+  "/subject-answer/gets",
+  verifyTokenMiddleware,
+  authorizeRole([RoleName.EDITOR, RoleName.ADMIN]),
+  getSubjectAnswers
+);
+
+app.post(
+  "/subject-answer/delete-all",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.EDITOR),
+  deleteAllSubjectAnswers
+);
+
+//TAG
+app.post(
+  "/tag/bulk-create",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.ADMIN),
+  createTags
+);
+
+app.post(
+  "/tag/get-random",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.USER),
+  getTag
+);
+
+app.post(
+  "/tag/delete-all",
+  verifyTokenMiddleware,
+  authorizeRole(RoleName.ADMIN),
+  deleteAllTags
+);
+
+//TEST
 app.post("/test/create", verifyTokenMiddleware, createTest);
 app.get("/test/gets", verifyTokenMiddleware, getTests);
 app.get("/test/get", verifyTokenMiddleware, getTest);
 app.post("/test/delete", verifyTokenMiddleware, deleteTest);
 app.post("/test/active", verifyTokenMiddleware, activeTest);
 app.post("/test/calc-score", verifyTokenMiddleware, caculateTestScore);
-
 
 app.use((err, req, res, next) => {
   console.log(err);
@@ -191,7 +318,10 @@ app.use((err, req, res, next) => {
 connectDatabase()
   .then(async () => {
     if (configdb.dbSeed) {
-      await seedAdmin();
+      await seedRoles();
+      await seedUsers();
+      await migrateUsersToRoles();
+      await seedSubjects();
     }
     app.listen(PORT, () => {
       console.log(`🚀 Server chạy tại http://localhost:${PORT}`);

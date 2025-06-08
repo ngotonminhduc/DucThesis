@@ -1,12 +1,10 @@
-import { Op } from "sequelize";
 import { Exam } from "../models/Exam.js";
 import { Question } from "../models/Question.js";
-import { checkExamActive } from "../utils/checkExam.js";
 
 export const createQuestion = async (req, res) => {
-  const { examId, content, type, idx } = req.body;
+  const { examId, content, type, idx, subjectQuestionId } = req.body;
 
-  if (!examId || !content || !type) {
+  if (!examId || !content || !type || !subjectQuestionId) {
     throw new Error("Tham số không hợp lệ");
   }
 
@@ -21,6 +19,7 @@ export const createQuestion = async (req, res) => {
     examId,
     content,
     type,
+    subjectQuestionId,
     idx,
   }).then((r) => r.toJSON());
 

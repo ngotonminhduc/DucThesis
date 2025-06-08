@@ -2,10 +2,23 @@ import { AxiosError, AxiosRequestHeaders } from "axios";
 import { AxiosService, TBaseResponseData } from "./axiosService";
 import { cookieStorage } from "@/utils/cookie";
 
+export enum RoleName {
+  ADMIN = 'ADMIN',
+  EDITOR = 'EDITOR',
+  USER = 'USER'
+}
+
+export type TRole = {
+  id: string;
+  name: RoleName;
+  description: string;
+};
+
 export type TUser = {
   email: string;
   name: string;
   isAdmin: boolean;
+  roles: TRole[];
 } & TBaseResponseData;
 
 export type TRegister = Pick<TUser, "name" | "email"> & { password: string };

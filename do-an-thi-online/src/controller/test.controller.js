@@ -11,9 +11,9 @@ export const createTest = async (req, res) => {
   if (!examId) {
     throw new Error("Tham số không hợp lệ");
   }
-  const existExam = await Exam.findOne({ where: { id: examId } }).then((r) =>
-    r ? true : false
-  );
+  const existExam = await Exam.findOne({
+    where: { id: examId, status: "active" },
+  }).then((r) => (r ? true : false));
   if (!existExam) {
     throw new Error("Bài kiểm tra không hợp lệ");
   }
@@ -121,7 +121,7 @@ export const activeTest = async (req, res) => {
     where: { examId, userId: u.id },
   }).then((r) => r?.toJSON());
   if (!r) {
-    throw new Error("Bài thi không tồn tại");
+    throw new Error("Bài thi đã bị xoá");
   }
   const exam = await Exam.findOne({ where: { id: r.examId } }).then((r) =>
     r?.toJSON()
@@ -130,7 +130,7 @@ export const activeTest = async (req, res) => {
     success: true,
     data: {
       ...r,
-      exam
+      exam,
     },
   });
 };
@@ -175,8 +175,8 @@ export const caculateTestScore = async (req, res) => {
   }
 
   const t = await Test.findOne({ where: { id } }).then((r) => r?.toJSON());
-  if(!t){
-    throw new Error('Không tìm thấy bài thi')
+  if (!t) {
+    throw new Error("Bài thi đã bị xoá");
   }
   const u = await getAuthUser(req);
 
@@ -207,12 +207,14 @@ export const caculateTestScore = async (req, res) => {
     throw new Error("Lỗi tính toán điểm");
   }
   const r = await Test.findOne({ where: { id } }).then((r) => r?.toJSON());
-  const exam = await Exam.findOne({where: {id: r.examId}}).then(r => r?.toJSON())
+  const exam = await Exam.findOne({ where: { id: r.examId } }).then((r) =>
+    r?.toJSON()
+  );
   res.status(200).json({
     success: true,
     data: {
       ...r,
-      exam
+      exam,
     },
   });
 };

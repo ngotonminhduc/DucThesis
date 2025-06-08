@@ -88,7 +88,6 @@ const ResultQuestion: React.FC<ResultQuestionProps> = ({
             <div className="space-y-3">
               {answers?.map((answer, i) => {
                 const isSelected = answerChoiceIds.includes(answer.id);
-
                 return (
                   <ResultAnswer key={i} val={answer} isChoice={isSelected} />
                 );

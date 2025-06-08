@@ -1,18 +1,19 @@
 // components/UserDropdown.tsx
-import { FC, useState, useEffect, useRef } from 'react';
-import { User } from 'lucide-react'; // Icon user từ lucide-react
+import { FC, useState, useEffect, useRef } from "react";
+import { User, UserCircle } from "lucide-react"; // Icon user từ lucide-react
 import { useAuthStore } from "@/store/auth-store";
-import { useRouter } from 'next/navigation';
-
-
+import { useRouter } from "next/navigation";
+import { RoleName } from "@/services/authService";
+import { createPortal } from "react-dom";
 
 const UserDropdown: FC = () => {
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const router = useRouter();
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   // Toggle dropdown khi click vào button
   const toggleDropdown = () => setIsOpen(!isOpen);
@@ -21,34 +22,43 @@ const UserDropdown: FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current && 
+        buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
       ) {
-        setIsOpen(false); // Đóng dropdown khi click ngoài
+        setIsOpen(false);
       }
     };
-
-    // Thêm sự kiện lắng nghe click
-    document.addEventListener('click', handleClickOutside);
-
-    // Dọn dẹp sự kiện khi component unmount
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  const handleEditProfile = () => {
-    console.log('Edit profile');
+  // Khi mở dropdown, tính toán vị trí tuyệt đối của button để đặt dropdown đúng vị trí
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: "absolute",
+        top: rect.bottom + window.scrollY + 8, // 8px margin
+        left: rect.right - 160 + window.scrollX, // 160 = width dropdown
+        zIndex: 9999,
+        width: 160,
+      });
+    }
+  }, [isOpen]);
+
+  const handleProfile = () => {
+    //TODO
   };
+
   const handleListTest = () => {
-    router.push('/result')
+    router.push("/result");
   };
 
   const handleLogout = () => {
-    logout()
-    router.replace('/')
+    logout();
+    router.replace("/");
   };
 
   return (
@@ -61,23 +71,36 @@ const UserDropdown: FC = () => {
         <User className="text-xl text-gray-600" />
       </button>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <div
           ref={dropdownRef}
-          className="absolute right-0 mt-2 w-28 bg-white shadow-md rounded-md border border-gray-200"
+          style={dropdownStyle}
+          className="bg-white shadow-md rounded-md border border-gray-200"
         >
           <ul className="py-2">
             <li>
               <button
-                onClick={handleListTest}
-                className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={handleProfile}
+                className="w-full flex items-center justify-start gap-2 px-4 py-2 text-gray-700"
               >
-                Lịch sử thi
+                <UserCircle className="w-10 h-10 text-gray-500" />
+                {user?.name || "User"}
               </button>
             </li>
+            <hr />
+            {!user?.roles.some((r) => r.name === RoleName.EDITOR) && (
+              <li>
+                <button
+                  onClick={handleListTest}
+                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                >
+                  Lịch sử thi
+                </button>
+              </li>
+            )}
             <li>
               <button
-                onClick={handleEditProfile}
+                onClick={handleProfile}
                 className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
                 Cá nhân
@@ -92,7 +115,8 @@ const UserDropdown: FC = () => {
               </button>
             </li>
           </ul>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

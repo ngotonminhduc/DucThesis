@@ -74,7 +74,7 @@ export default function AdminDashboard({data}: any) {
     <div className="flex flex-col items-center h-screen pt-[70px] overflow-y-auto ">
       <Header />
       {exams.length ? (
-        <div className="flex flex-col w-full items-center mt-4 flex-1 ">
+        <div className="flex z-0 flex-col w-full items-center mt-4 flex-1 ">
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg lg:w-9/12 pb-3 overflow-x-hidden ">
             {/* flex-grow */}
             {exams.map((e, index) => (

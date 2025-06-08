@@ -11,6 +11,7 @@ export type TQuestion = {
   examId: string;
   type: TQuestionType;
   idx: number
+  subjectQuestionId: string
 } & TBaseResponseData;
 
 export type TCreateQuestion = Omit<TQuestion, keyof TBaseResponseData>;

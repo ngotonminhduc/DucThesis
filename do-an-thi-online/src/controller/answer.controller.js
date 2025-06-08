@@ -98,7 +98,7 @@ export const getAnswers = async (req, res) => {
   if (!questionId) {
     throw new Error("Tham số không hợp lệ");
   }
-  
+
   const answers = await Answer.findAll({
     where: { questionId },
     order: [["idx", "asc"]],

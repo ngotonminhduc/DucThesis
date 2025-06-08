@@ -1,9 +1,10 @@
 import express from "express";
 import { comparePassword, hashPassword } from "../utils/hashPassword.js";
-import { User } from "../models/User.js";
+import { User, Role, UserRole } from "../models/index.js";
 import { encodeToken } from "../utils/jwt.js";
 import { google } from "googleapis";
 import { googleClient } from "../config/config.js";
+import { RoleName } from "../utils/type.js";
 
 /** @type {express.RequestHandler} */
 export const login = async (req, res) => {
@@ -34,6 +35,24 @@ export const login = async (req, res) => {
   });
 };
 
+/**
+ *
+ * @param {string} userId
+ */
+const addRole = async (userId) => {
+  const role = await Role.findOne({ where: { name: RoleName.USER } }).then(
+    (r) => r?.toJSON()
+  );
+  if (!role) {
+    throw new Error("Cannot find required roles. Please seed roles first.");
+  }
+
+  await UserRole.create({
+    userId,
+    roleId: role.id,
+  });
+};
+
 /** @type {express.RequestHandler} */
 export const register = async (req, res) => {
   /** @type {{name: string, email: string, password: string}} */
@@ -56,7 +75,7 @@ export const register = async (req, res) => {
     email,
     password: hashedPassword,
   }).then((r) => r.toJSON());
-
+  await addRole(user.id);
   const payload = {
     id: user.id,
     email: user.email,
@@ -74,23 +93,38 @@ export const register = async (req, res) => {
 /** @type {express.RequestHandler} */
 export const me = async (req, res) => {
   const userData = req["user"];
-  const u = await User.findOne({ where: { id: userData.id } }).then((r) =>
-    r?.toJSON()
-  );
+  const u = await User.findOne({
+    where: { id: userData.id },
+    include: [
+      {
+        model: Role,
+        as: "roles",
+        through: {
+          attributes: [],
+        },
+      },
+    ],
+  }).then((r) => r?.toJSON());
   if (!u) {
     throw new Error("Tài khoản không hợp lệ");
   }
   const { password, ...user } = u;
+
   res.status(200).json({
     success: true,
-    data: user,
+    data: {
+      ...user,
+    },
   });
 };
 
 /** Google login */
 export const getGoogleUser = async (accessToken) => {
   try {
-    const auth = new google.auth.OAuth2(googleClient.googleClientId, googleClient.googleClientSecret);
+    const auth = new google.auth.OAuth2(
+      googleClient.googleClientId,
+      googleClient.googleClientSecret
+    );
     auth.setCredentials({
       access_token: accessToken,
     });
@@ -137,8 +171,10 @@ export const loginWithSocial = async (req, res) => {
       user = await User.create({
         name: info.name,
         email: info.email,
-        type: 'external'
+        type: "external",
       }).then((r) => r?.toJSON());
+
+      await addRole(user.id);
     }
     const token = generateToken(user.id, user.email);
     res.status(200).json({

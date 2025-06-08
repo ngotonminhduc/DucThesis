@@ -14,6 +14,8 @@ export type TExam = {
   description: string;
   status: TExamStatus;
   examTime: number;
+  subjectId: string;
+  tagQuantity: number;
 } & TBaseResponseData;
 
 export type TCreateExam = Omit<TExam, keyof TBaseResponseData>;
@@ -34,12 +36,19 @@ class ExamService {
     return ExamService.instance;
   }
 
-  create = async ({ topic, status, description, examTime }: TCreateExam) => {
+  create = async ({
+    topic,
+    status,
+    description,
+    examTime,
+    subjectId,
+  }: TCreateExam) => {
     const r = await this.api.post<TExam>("/exam/create", {
       topic,
       description,
       status,
       examTime,
+      subjectId,
     });
     return r;
   };
@@ -62,6 +71,7 @@ class ExamService {
     description,
     examTime,
     status,
+    tagQuantity
   }: Partial<TExam>) => {
     const r = await this.api.post<TExam>("/exam/update", {
       id,
@@ -69,6 +79,7 @@ class ExamService {
       description,
       status,
       examTime,
+      tagQuantity
     });
     return r;
   };

@@ -118,10 +118,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: googleClientId ?? "",
         scope: "email profile",
+        prompt: 'select_account',
         callback: (res) => {
           handleSuccess(res.access_token);
         },
         error_callback: (err) => {
+          if(err.type === 'popup_closed'){
+            return
+          }
           set({
             error: err.message,
             isLoading: false,
@@ -156,6 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null,
         token: null,
       });
+      cookieStorage.removeItem(authService.authCookieCname);
       return;
     }
     set({

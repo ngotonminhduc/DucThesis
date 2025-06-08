@@ -9,6 +9,7 @@ interface ButtonProps {
   text: string;
   disabled?: boolean;
   loading?: boolean;
+  className?: string;
 }
 
 export const Button = ({
@@ -18,11 +19,15 @@ export const Button = ({
   text,
   icon,
   disabled,
+  className,
   loading = false, // Mặc định là false
 }: ButtonProps) => {
   return (
     <button
-      className={`inline-flex items-center justify-center gap-2 rounded-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${customStyle}`}
+      className={
+        className ??
+        `inline-flex items-center justify-center gap-2 rounded-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${customStyle}`
+      }
       style={style}
       onClick={onClick}
       disabled={disabled || loading} // Vô hiệu hoá button khi đang loading

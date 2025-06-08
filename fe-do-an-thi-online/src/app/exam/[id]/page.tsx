@@ -17,6 +17,8 @@ import { TQuestion } from "@/services/questionService";
 import TestExamHeader from "@/components/exam/ExamHeader/TestExamHeader";
 import { useTestStore } from "@/store/test-store";
 import { TAnswerMap } from "@/services/testService";
+import { useTagStore } from "@/store/tag-store";
+import { arrayToObject } from "@/utils/array";
 
 type TStudentAnswer = {
   questionId: string;
@@ -38,6 +40,7 @@ function StudentExamPage() {
   const [examCompleted, setExamCompleted] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [exam, setExam] = useState<TExam>();
+  const { selectedTag } = useTagStore();
   const { openModal, closeModal } = useModal();
   const { caculateTestScore, startTest, activeTest } = useTestStore();
   const activeTestRef = useRef(activeTest);
@@ -77,12 +80,12 @@ function StudentExamPage() {
       sessionStorage.setItem("testId", activeTestRef.current?.id ?? "");
     };
     const handleCloseTab = (e: Event) => {
-      e.preventDefault()
-      handleUnload()
-    }
+      e.preventDefault();
+      handleUnload();
+    };
     window.addEventListener("beforeunload", handleBeforeunload);
     window.addEventListener("unload", handleUnload);
-    window.addEventListener('close', handleBeforeunload)
+    window.addEventListener("close", handleBeforeunload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeunload);
       window.removeEventListener("unload", handleUnload);
@@ -152,20 +155,34 @@ function StudentExamPage() {
   }, [exams.get(params.id)]);
 
   useEffect(() => {
-    if(!storedQuestions[params.id]){
-      return
+    if (!selectedTag || !questions.length) {
+      return;
+    }
+  }, [selectedTag, storedQuestions[params.id]]);
+
+  useEffect(() => {
+    if (!storedQuestions[params.id] || !selectedTag) {
+      return;
     }
     if (storedQuestions[params.id].length > 0) {
-      const availableAnswers = storedQuestions[params.id].map((question) => ({
+      const questionsMap = arrayToObject(
+        storedQuestions[params.id],
+        "idx",
+        (q) => q
+      );
+      const sortedQuestions = selectedTag.mixQuestions.map(
+        (idx) => questionsMap[idx]
+      );
+      const availableAnswers = sortedQuestions.map((question) => ({
         questionId: question.id,
         examId: params.id,
         answer: question.type === "Essay" ? "" : null,
         answerIds: [],
       }));
-      setQuestions(storedQuestions[params.id]);
+      setQuestions(sortedQuestions);
       setStudentAnswers(availableAnswers);
     }
-  }, [storedQuestions[params.id]]);
+  }, [storedQuestions[params.id], selectedTag]);
 
   const handleAnswerChange = (questionIndex: number, answerId: string) => {
     if (examCompleted) return;
@@ -264,7 +281,7 @@ function StudentExamPage() {
     <div className="max-w-4xl mx-auto p-4">
       {exam ? (
         <CardExam className="bg-white shadow-lg rounded-xl overflow-hidden">
-          <TestExamHeader exam={exam} timeLeft={timeLeft} />
+          <TestExamHeader code={selectedTag?.code ?? ''} exam={exam} timeLeft={timeLeft} />
           <div className="p-6 space-y-8">
             {questions.map((question, i) => (
               <TestQuestion

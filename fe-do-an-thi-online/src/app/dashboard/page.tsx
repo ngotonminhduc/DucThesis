@@ -9,8 +9,12 @@ import { useExamStore } from "@/store/exam-store";
 import { TExam } from "@/services/examService";
 import { useModal } from "@/hooks/useModal";
 import EmptyExamState from "@/components/exam/EmtyExamState";
-import ConfirmTest from "@/components/exam/Dialog/ConfirmTest";
+import ConfirmTest, {
+  ConfirmTestProps,
+} from "@/components/exam/Dialog/ConfirmTest";
 import { useTestStore } from "@/store/test-store";
+import { ModalOptions } from "@/components/modal/type";
+import { useTagStore } from "@/store/tag-store";
 
 type TTestMap = {
   [examId: string]: string[];
@@ -23,6 +27,7 @@ export default function Dashboard() {
   const { exams: storedExams, getExams } = useExamStore();
   const { openModal, closeModal } = useModal();
   const { createTest, getTests, tests, error, clearError } = useTestStore();
+  const { getRandomTag } = useTagStore();
 
   useEffect(() => {
     (async () => {
@@ -65,18 +70,33 @@ export default function Dashboard() {
     if (!t) {
       return;
     }
+
+    await getRandomTag(examId);
     router.push(`/exam/${examId}`);
   };
 
   const handleRedirectExamDetail = (exam: TExam) => {
-    openModal(
-      ConfirmTest,
-      {
+    const dialogContentByStatus: {
+      [k: string]: Omit<ConfirmTestProps, "onClose">;
+    } = {
+      active: {
         title: `Xác nhận thi môn ${exam.topic}`,
         message: "Thao tác này không thể hoàn tất, bạn có muốn thi không?",
         onConfirm: () => handleJoinTest(exam.id),
         confirmText: "Bắt đầu",
         cancelText: "Hủy bỏ",
+      },
+      pending: {
+        title: `Bài thi ${exam.topic} chưa được mở`,
+        message: "Vui lòng đợi giáo viên mở đề thi này",
+        cancelText: "Đóng",
+        status: "pending",
+      },
+    };
+    openModal(
+      ConfirmTest,
+      {
+        ...dialogContentByStatus[exam.status],
       },
       { size: "md" }
     );

@@ -8,6 +8,7 @@ type DropdownProps = {
   label?: string;
   defaultValue?: string;
   placeHolder?: string;
+  disabled?: boolean
   item: { value: string; label: string }[];
   onValueChange: (v: string) => void;
   className?: string;
@@ -19,6 +20,7 @@ const Dropdown = ({
   placeHolder,
   defaultValue,
   onValueChange,
+  disabled,
   className
 }: DropdownProps) => {
   return (
@@ -29,7 +31,8 @@ const Dropdown = ({
         </label>
       )}
       <Select 
-        defaultValue={defaultValue} 
+        defaultValue={defaultValue}
+        disabled={disabled}
         onValueChange={onValueChange}
       >
         <SelectTrigger className="w-full h-10 px-3 py-2 text-gray-700 border rounded-lg">

@@ -1,13 +1,13 @@
 import { ulid } from "ulidx";
 import { s2g } from "../config/database.js";
-import { BaseModle } from "./Base.js";
+import { BaseModel } from "./Base.js";
 import { DataTypes, Sequelize } from "sequelize";
 import { QuesType } from "../utils/type.js";
 
 export const Question = s2g.define(
   "Question",
   {
-    ...BaseModle,
+    ...BaseModel,
     examId: {
       type: DataTypes.STRING,
     },
@@ -18,6 +18,9 @@ export const Question = s2g.define(
     type: {
       type: DataTypes.STRING,
       defaultValue: QuesType.MultipleChoice,
+    },
+    subjectQuestionId: {
+      type: DataTypes.STRING,
     },
     idx: {
       type: DataTypes.INTEGER,

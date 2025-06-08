@@ -15,7 +15,8 @@ interface TextInputProps {
   onChange?: ChangeEventHandler<HTMLInputElement>;
   onFocus?: FocusEventHandler<HTMLInputElement>;
   onBlur?: FocusEventHandler<HTMLInputElement>;
-  onKeyDown?: KeyboardEventHandler<HTMLInputElement>
+  onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
+  onKeyPress?: KeyboardEventHandler<HTMLInputElement>;
   ref?: Ref<HTMLInputElement>;
 }
 export const TextInput = ({
@@ -28,6 +29,7 @@ export const TextInput = ({
   onFocus,
   onBlur,
   onKeyDown,
+  onKeyPress,
   ref,
 }: TextInputProps) => {
   return (
@@ -46,6 +48,7 @@ export const TextInput = ({
       onChange={onChange}
       onFocus={onFocus}
       onKeyDown={onKeyDown}
+      onKeyPress={onKeyPress}
       disabled={disable}
     />
   );

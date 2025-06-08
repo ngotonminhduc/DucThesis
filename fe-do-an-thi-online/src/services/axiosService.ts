@@ -7,6 +7,11 @@ type SuccessResponse<T> = {
   message?: never;
 };
 
+export type ResponseList<T> = {
+  totalCount: number
+  items: T[] 
+}
+
 type ErrorResponse = {
   success: false;
   message: string;

@@ -20,6 +20,7 @@ export type TTest = {
   userId: string;
   score: number;
   status: TTestStatus;
+  code: string
   answersMap?: TAnswerMap;
   correctAnswersMap?: TAnswerMap;
   correctAnswersCount: number;

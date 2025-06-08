@@ -1,11 +1,11 @@
 import { s2g } from "../config/database.js";
-import { BaseModle } from "./Base.js";
+import { BaseModel } from "./Base.js";
 import { DataTypes } from "sequelize";
 
 export const User = s2g.define(
   "User",
   {
-    ...BaseModle,
+    ...BaseModel,
     name: {
       type: DataTypes.STRING,
       allowNull: false,

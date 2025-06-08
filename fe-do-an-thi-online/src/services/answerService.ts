@@ -5,7 +5,8 @@ export type TAnswer = {
   questionId: string;
   content: string;
   isCorrect: boolean;
-  idx: number
+  idx: number;
+  subjectAnswerId: string;
 } & TBaseResponseData;
 
 export type TCreateAnswer = Omit<TAnswer, keyof TBaseResponseData>;

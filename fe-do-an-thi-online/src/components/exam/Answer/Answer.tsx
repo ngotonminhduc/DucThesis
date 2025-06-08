@@ -1,4 +1,3 @@
-import { Answer as TAnswer, TAddAnswer } from "@/utils/type";
 import React, {
   ChangeEventHandler,
   KeyboardEventHandler,
@@ -8,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Radio } from "../../input/Radio";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { TextInput } from "../../input/TextInput";
 import { useParams } from "next/navigation";
 import {
@@ -18,6 +17,7 @@ import {
   TStateAnswer,
   UpdateItemHandler,
 } from "./type";
+import { useSubjectAnswerStore } from "@/store/subject-answer-store";
 
 interface AnswerProps {
   canEdit?: boolean;
@@ -54,6 +54,7 @@ export const Answer = React.memo(
     const handleChangeContent: ChangeEventHandler<HTMLInputElement> = (e) => {
       setContent(e.target.value);
     };
+    const {subjectAnswers} = useSubjectAnswerStore()
 
     useEffect(() => {
       if (isAddItemComponent) {
@@ -67,6 +68,7 @@ export const Answer = React.memo(
         id: val?.id,
         idx: incrementId!,
         canUpdate: !!content,
+        subjectAnswerId: ''
       });
     }, [content, isCorrect]);
 
@@ -83,6 +85,7 @@ export const Answer = React.memo(
         questionId,
         id: val?.id ?? "",
         idx: incrementId!,
+        subjectAnswerId: ''
       });
     };
     const handleSelectChangeItem: ChangeEventHandler<HTMLInputElement> = () => {
@@ -112,6 +115,7 @@ export const Answer = React.memo(
         examId: params.id,
         questionId,
         idx: incrementId!,
+        subjectAnswerId: '',
       });
     };
     return (

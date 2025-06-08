@@ -4,6 +4,7 @@ import { TStateAnswer } from "../Answer/type";
 export type TStateQuestion = TCreateQuestion & {
   answers?: TStateAnswer[];
   id?: string;
+  page?: number
   canUpdate?: boolean;
 };
 

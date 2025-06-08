@@ -1,11 +1,12 @@
+import { Op } from "sequelize";
 import { Exam } from "../models/Exam.js";
-import { checkUserAdmin } from "../utils/checkUserAdmin.js";
+import { checkUserRole } from "../utils/checkUserRole.js";
 import { getAuthUser } from "../utils/getAuthUser.js";
 
 export const createExam = async (req, res) => {
-  const { topic, description, examTime, status } = req.body;
+  const { topic, description, examTime, status, subjectId } = req.body;
 
-  if (!topic || !description || !examTime) {
+  if (!topic || !description || !examTime || !subjectId) {
     throw new Error("Tham số không hợp lệ");
   }
 
@@ -14,6 +15,7 @@ export const createExam = async (req, res) => {
     description,
     examTime,
     status,
+    subjectId,
   }).then((r) => r.toJSON());
 
   if (!exam) {
@@ -29,25 +31,27 @@ export const createExam = async (req, res) => {
 };
 
 export const updateExam = async (req, res) => {
-  const { id, topic, description, examTime, status } = req.body;
+  const { id, topic, description, examTime, status, tagQuantity } = req.body;
 
-  if (!id || !topic || !description || !examTime) {
+  if (!id) {
     throw new Error("Tham số không hợp lệ");
   }
 
-  const n = await Exam.update(
-    {
-      topic,
-      description,
-      examTime,
-      status,
+  const existExam = await Exam.findOne({
+    where: {
+      id,
+      status: "pending",
     },
-    { where: { id } }
-  ).then((r) => r[0]);
+  }).then((r) => r?.toJSON());
 
-  if (n < 1) {
-    throw new Error("Đề thi không tồn tại");
+  if (!existExam) {
+    throw new Error("Không thể cập nhật bài kiểm tra!");
   }
+
+  await Exam.update(
+    { topic, description, examTime, status, tagQuantity },
+    { where: { id } }
+  );
 
   const exam = await Exam.findOne({ where: { id } }).then((r) => r?.toJSON());
 
@@ -60,13 +64,23 @@ export const updateExam = async (req, res) => {
 export const getExams = async (req, res) => {
   const user = getAuthUser(req);
   let exams;
-  if (user.isAdmin) {
+
+  // Kiểm tra xem user có role ADMIN không
+  const isAdmin = await checkUserRole(user.id, "ADMIN");
+
+  if (isAdmin) {
+    // Admin có thể xem tất cả bài thi
     exams = await Exam.findAll({
       order: [["createdAt", "desc"]],
     }).then((arr) => arr.map((r) => r.toJSON()));
   } else {
+    // User thường chỉ xem được bài thi active
     exams = await Exam.findAll({
-      where: { status: "active" },
+      where: {
+        status: {
+          [Op.notIn]: ["inactive"],
+        },
+      },
       order: [["createdAt", "desc"]],
     }).then((arr) => arr.map((r) => r.toJSON()));
   }

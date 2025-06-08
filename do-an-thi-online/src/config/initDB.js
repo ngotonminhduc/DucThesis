@@ -11,13 +11,13 @@ const initModels = async () => {
 
 export const connectDatabase = async () => {
   try {
-    const { dbSyncAlter, dbSyncForce } = configdb;
+    const { dbSyncForce } = configdb;
     console.log(dbSyncForce);
-    
+
     const mode = dbSyncForce ? "force" : "alter";
     console.debug(`syncing db from models... mode=${mode}`);
     const sync = { [mode]: true };
-    
+
     await s2g.authenticate();
     console.log("✅ Đã kết nối với PostgreSQL!");
 

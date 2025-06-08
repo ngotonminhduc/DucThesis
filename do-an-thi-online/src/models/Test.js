@@ -1,14 +1,18 @@
 import { s2g } from "../config/database.js";
 import { StatusTest } from "../utils/type.js";
-import { BaseModle } from "./Base.js";
+import { BaseModel } from "./Base.js";
 import { DataTypes } from "sequelize";
 
 export const Test = s2g.define(
   "Test",
   {
-    ...BaseModle,
+    ...BaseModel,
     examId: {
       type: DataTypes.STRING,
+    },
+    code: {
+      type: DataTypes.STRING,
+      defaultValue: "",
     },
     userId: {
       type: DataTypes.STRING,
